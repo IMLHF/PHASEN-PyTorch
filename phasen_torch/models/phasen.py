@@ -420,38 +420,45 @@ class PHASEN(nn.Module):
 
 
     # region losses
-    self.loss_compressedMag_mse = losses.batch_time_compressedMag_mse(est_clean_mag_batch,
-                                                                      self.clean_mag_batch,
+    self.loss_compressedMag_mse = losses.batchSum_compressedMag_mse(est_clean_mag_batch,
+                                                                    self.clean_mag_batch,
+                                                                    PARAM.loss_compressedMag_idx)
+    self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(est_clean_stft_batch,
+                                                                      self.clean_stft_batch,
                                                                       PARAM.loss_compressedMag_idx)
-    self.loss_compressedStft_mse = losses.batch_time_compressedStft_mse(est_clean_stft_batch,
-                                                                        self.clean_stft_batch,
-                                                                        PARAM.loss_compressedMag_idx)
-    self.loss_mag_mse = losses.batch_time_fea_real_mse(
-        est_clean_mag_batch, self.clean_mag_batch)
-    self.loss_mag_reMse = losses.batch_real_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
-                                                        PARAM.relative_loss_epsilon, PARAM.RL_idx)
-    self.loss_stft_mse = losses.batch_time_fea_complex_mse(
-        est_clean_stft_batch, self.clean_stft_batch)
-    self.loss_stft_reMse = losses.batch_complex_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
-                                                            PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
-    self.loss_wav_L1 = losses.batch_wav_L1_loss(
-        est_clean_wav_batch, self.clean_wav_batch)*10.0
-    self.loss_wav_L2 = losses.batch_wav_L2_loss(
-        est_clean_wav_batch, self.clean_wav_batch)*100.0
-    self.loss_wav_reL2 = losses.batch_wav_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
+
+    self.loss_mag_mse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
+    self.loss_mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
                                                       PARAM.relative_loss_epsilon, PARAM.RL_idx)
+    self.loss_stft_mse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
+    self.loss_stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
+                                                       PARAM.relative_loss_epsilon, PARAM.RL_idx)
+
+
+    self.loss_mag_mae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
+    self.loss_mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
+                                                      PARAM.relative_loss_epsilon)
+    self.loss_stft_mae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
+    self.loss_stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
+                                                       PARAM.relative_loss_epsilon)
+
+
+    self.loss_wav_L1 = losses.batchSum_MAE(est_clean_wav_batch, self.clean_wav_batch)
+    self.loss_wav_L2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
+    self.loss_wav_reL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
+                                                     PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
     self.loss_CosSim = losses.batch_CosSim_loss(
         est_clean_wav_batch, self.clean_wav_batch)
     self.loss_SquareCosSim = losses.batch_SquareCosSim_loss(
         est_clean_wav_batch, self.clean_wav_batch)
-    self.loss_stCosSim = losses.batch_short_time_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
-                                                             PARAM.st_frame_length_for_loss,
-                                                             PARAM.st_frame_step_for_loss)
-    self.loss_stSquareCosSim = losses.batch_short_time_SquareCosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
-                                                                         PARAM.st_frame_length_for_loss,
-                                                                         PARAM.st_frame_step_for_loss)
+    # self.loss_stCosSim = losses.batch_short_time_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
+    #                                                          PARAM.st_frame_length_for_loss,
+    #                                                          PARAM.st_frame_step_for_loss)
+    # self.loss_stSquareCosSim = losses.batch_short_time_SquareCosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
+    #                                                                      PARAM.st_frame_length_for_loss,
+    #                                                                      PARAM.st_frame_step_for_loss)
     loss_dict = {
         'loss_compressedMag_mse': self.loss_compressedMag_mse,
         'loss_compressedStft_mse': self.loss_compressedStft_mse,
@@ -459,13 +466,17 @@ class PHASEN(nn.Module):
         'loss_mag_reMse': self.loss_mag_reMse,
         'loss_stft_mse': self.loss_stft_mse,
         'loss_stft_reMse': self.loss_stft_reMse,
+        'loss_mag_mae': self.loss_mag_mae,
+        'loss_mag_reMae': self.loss_mag_reMae,
+        'loss_stft_mae': self.loss_stft_mae,
+        'loss_stft_reMae': self.loss_stft_reMae,
         'loss_wav_L1': self.loss_wav_L1,
         'loss_wav_L2': self.loss_wav_L2,
         'loss_wav_reL2': self.loss_wav_reL2,
         'loss_CosSim': self.loss_CosSim,
         'loss_SquareCosSim': self.loss_SquareCosSim,
-        'loss_stCosSim': self.loss_stCosSim,
-        'loss_stSquareCosSim': self.loss_stSquareCosSim,
+        # 'loss_stCosSim': self.loss_stCosSim,
+        # 'loss_stSquareCosSim': self.loss_stSquareCosSim,
     }
     # endregion losses
 
