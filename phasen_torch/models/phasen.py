@@ -37,7 +37,7 @@ class SelfConv2d(nn.Module):
 
 
 class BatchNormAndActivate(nn.Module):
-  def __init__(self, channel, activation=nn.Relu(inplace=True)):
+  def __init__(self, channel, activation=nn.ReLU(inplace=True)):
     super(BatchNormAndActivate, self).__init__()
     self.bn_layer = nn.BatchNorm2d(channel)
     self.activate_fn = activation
@@ -63,7 +63,7 @@ class Stream_PreNet(nn.Module):
     kernels: kernel for layers
     '''
     super(Stream_PreNet, self).__init__()
-    self.nn_layers = []
+    self.nn_layers = nn.ModuleList()
     for i, kernel in enumerate(kernels):
       conv2d = SelfConv2d(in_channels if i==0 else out_channels, out_channels,
                           kernel_size=kernel,
@@ -96,7 +96,8 @@ class NodeReshape(nn.Module):
   def forward(self, feature_in:torch.Tensor):
     shape = feature_in.size()
     batch = shape[0]
-    new_shape = [batch].extend(list(self.shape))
+    new_shape = [batch]
+    new_shape.extend(list(self.shape))
     return feature_in.view(new_shape)
 
 
@@ -113,14 +114,14 @@ class FrequencyTransformationBlock(nn.Module):
     self.att_inner_reshape = NodeReshape([frequency_dim * channel_attention, -1])
     self.att_conv1d_2 = nn.Conv1d(frequency_dim*channel_attention, frequency_dim,
                                   9, padding=4)  # [batch, F, T]
-    self.att_conv1d_2_bna = BatchNormAndActivate(frequency_dim)
+    self.att_conv1d_2_bna = nn.Sequential(nn.BatchNorm1d(frequency_dim), nn.ReLU(inplace=True))
     self.att_out_reshape = NodeReshape([1, frequency_dim, -1])
     self.frequencyFC = nn.Linear(frequency_dim, frequency_dim)
 
     self.out_conv2d = SelfConv2d(channel_in_out*2, channel_in_out, [1, 1], padding="same")
     self.out_conv2d_bna = BatchNormAndActivate(channel_in_out)
 
-  def forward(self, feature_in, training):
+  def forward(self, feature_in):
     '''
     feature_n: [batch, channel_in_out, F, T]
     '''
@@ -181,11 +182,17 @@ class TwoStreamBlock(nn.Module):
     self.sA6_info_communicate = InfoCommunicate(
         channel_in_out_P, channel_in_out_A)
 
-    # [batch, C, F, T]
-    self.sP1_conv2d_before_LN = nn.LayerNorm([channel_in_out_P, frequency_dim, 1])
+    # [batch, C, F, T] -> [batch, T, F, C]
+    self.sP1_conv2d_before_LN = nn.LayerNorm([frequency_dim, channel_in_out_P])
+    # [batch, T, F, C] -> [batch, C, F, T]
+
     self.sP1_conv2d = SelfConv2d(
         channel_in_out_P, channel_in_out_P, [3, 5], padding="same")
-    self.sP2_conv2d_before_LN = nn.LayerNorm([channel_in_out_P, frequency_dim, 1])
+
+    # [batch, C, F, T] -> [batch, T, F, C]
+    self.sP2_conv2d_before_LN = nn.LayerNorm([frequency_dim, channel_in_out_P])
+    # [batch, T, F, C] -> [batch, C, F, T]
+
     self.sP2_conv2d = SelfConv2d(
         channel_in_out_P, channel_in_out_P, [1, 25], padding="same")
     self.sP3_info_communicate = InfoCommunicate(
@@ -205,9 +212,14 @@ class TwoStreamBlock(nn.Module):
 
     # Strean P
     sP_out = feature_sP
+    # [batch, C, F, T] -> [batch, T, F, C]
+    sP_out = torch.transpose(sP_out, 1, 3)
     sP_out = self.sP1_conv2d_before_LN(sP_out)
+    sP_out = torch.transpose(sP_out, 1, 3)
     sP_out = self.sP1_conv2d(sP_out)
+    sP_out = torch.transpose(sP_out, 1, 3)
     sP_out = self.sP2_conv2d_before_LN(sP_out)
+    sP_out = torch.transpose(sP_out, 1, 3)
     sP_out = self.sP2_conv2d(sP_out)
 
     # information communication
@@ -230,9 +242,9 @@ class StreamAmplitude_PostNet(nn.Module):
 
     self.p3_dense = nn.Sequential(nn.Linear(uni_rnn_units * 2, 600), nn.ReLU(inplace=True))
     self.p4_dense = nn.Sequential(nn.Linear(600, 600), nn.ReLU(inplace=True))
-    self.out_dense = nn.Sequential(nn.Linear(600, 600), nn.Sigmoid())
+    self.out_dense = nn.Sequential(nn.Linear(600, frequency_dim), nn.Sigmoid())
 
-  def call(self, feature_sA, training):
+  def forward(self, feature_sA):
     '''
     return [batch, T, F]
     '''
@@ -243,30 +255,36 @@ class StreamAmplitude_PostNet(nn.Module):
     out = self.p2_blstm(out)[0] # [N, T, 2*600]
     out = self.p3_dense(out)
     out = self.p4_dense(out)
-    out = self.out_dense(out)
+    out = self.out_dense(out) # [N, T, F]
+    out = torch.transpose(out, 1, 2)
     return out
 
 
 class StreamPhase_PostNet(nn.Module):
   def __init__(self, channel_sP):
     super(StreamPhase_PostNet, self).__init__()
-    self._layers.append(SelfConv2d(
-        channel_sP, 2, [1, 1], padding="same"))
+    self.conv2d = SelfConv2d(channel_sP, 2, [1, 1], padding="same")
 
   def forward(self, feature_sP:torch.Tensor):
     '''
     return [batch, T, F]->complex
     '''
     out = feature_sP
-    for layer_fn in self._layers:
-      out = layer_fn(out)
+    out = self.conv2d(out)
     # out: [batch, 2, F, T]
-    out_real = out[:, 0, :, :]
-    out_imag = out[:, 1, :, :]
-    out_angle = out_imag.atan2_(out_real)
-    out[:, 0, :, :] = torch.cos(out_angle)
-    out[:, 1, :, :] = torch.sin_(out_angle)
-    return out
+    # out_real = out[:, 0, :, :]
+    # out_imag = out[:, 1, :, :]
+    # out_angle = out_imag.atan2_(out_real)
+    # out[:, 0, :, :] = torch.cos(out_angle)
+    # out[:, 1, :, :] = torch.sin_(out_angle)
+
+    out_real = out[:, :1, :, :]
+    out_imag = out[:, 1:, :, :]
+    out_angle = out_imag.atan2(out_real)
+    out_real_n = torch.cos(out_angle)
+    out_imag_n = torch.sin(out_angle)
+    normed_stft = torch.cat([out_real_n, out_imag_n], dim=1)
+    return normed_stft, out_angle
 
 
 class WavFeatures(
@@ -275,13 +293,14 @@ class WavFeatures(
                             "stft_batch", #[N, 2, F, T]
                             "mag_batch", # [N, F, T]
                             "angle_batch", # [N, F, T]
+                            "normed_stft_batch", # [N, F, T]
                             ))):
   pass
 
 
 class NET_PHASEN_OUT(
     collections.namedtuple("NET_PHASEN_OUT",
-                           ("mag_mask", "normalized_complex_phase"))):
+                           ("mag_mask", "normalized_complex_phase", "angle"))):
   pass
 
 
@@ -293,7 +312,7 @@ class NetPHASEN(nn.Module):
         conv2d_bn=True, conv2d_activation=nn.ReLU(inplace=True))
     self.streamP_prenet = Stream_PreNet(
         2, PARAM.channel_P, PARAM.prenet_P_kernels)
-    self.layers_TSB = []
+    self.layers_TSB = nn.ModuleList()
     for i in range(1, PARAM.n_TSB+1):
       tsb_t = TwoStreamBlock(
           PARAM.frequency_dim, PARAM.channel_A, PARAM.channel_P)
@@ -317,12 +336,14 @@ class NetPHASEN(nn.Module):
     for tsb in self.layers_TSB:
       sA_out, sP_out = tsb(sA_out, sP_out)
     sA_out = self.streamA_postnet(sA_out)  # [batch, f, t]
-    sP_out = self.streamP_postnet(sP_out)  # [batch, 2, f, t]
+    sP_out_normed_stft, sP_out_angle = self.streamP_postnet(sP_out)  # [batch, 2, f, t]
 
     est_mask = sA_out  # [batch, f, t]
-    normed_complex_phase = sP_out  # [batch, 2, f, t], (real, imag)
+    normed_complex_phase = sP_out_normed_stft  # [batch, 2, f, t], (real, imag)
+    est_angle = sP_out_angle
     return NET_PHASEN_OUT(mag_mask=est_mask,
-                          normalized_complex_phase=normed_complex_phase)
+                          normalized_complex_phase=normed_complex_phase,
+                          angle=est_angle)
 
 
 class Losses(
@@ -332,20 +353,23 @@ class Losses(
 
 
 class PHASEN(nn.Module):
-  def __init__(self,
-               mode):
+  def __init__(self, mode, device):
     super(PHASEN, self).__init__()
     self.mode = mode
+    self.device = device
     self._net_model = NetPHASEN()
     self._stft_fn = conv_stft.ConvSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, 2, F, T]
     self._istft_fn = conv_stft.ConviSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, L]
 
     if mode == PARAM.MODEL_VALIDATE_KEY or mode == PARAM.MODEL_INFER_KEY:
-      self.eval(True)
+      # self.eval(True)
+      self.to(self.device)
       return
 
-    # global_step
+    # other params to save
     self._global_step = 1
+    self._start_epoch = 1
+    self._nan_grads_batch = 0
 
     # choose optimizer
     if PARAM.optimizer == "Adam":
@@ -360,18 +384,45 @@ class PHASEN(nn.Module):
         return misc_utils.warmup_coef(step, warmup_steps=PARAM.warmup_steps)
       self._lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self._optimizer, warmup)
 
-    self.train(True)
+    # self.train(True)
+    self.to(self.device)
 
-  def save(self, ckpt_path):
+  def save_every_epoch(self, ckpt_path):
+    self._start_epoch += 1
     torch.save({
                 "global_step": self._global_step,
+                "start_epoch": self._start_epoch,
+                "nan_grads_batch": self._nan_grads_batch,
                 "other_state": self.state_dict(),
             }, ckpt_path)
 
   def load(self, ckpt_path):
     ckpt = torch.load(ckpt_path)
-    self._global_step = ckpt['global_step']
-    self.load_state_dict(ckpt['other_state'])
+    self._global_step = ckpt["global_step"]
+    self._start_epoch = ckpt["start_epoch"]
+    self._nan_grads_batch = ckpt["nan_grads_batch"]
+    self.load_state_dict(ckpt["other_state"])
+
+  def update_params(self, loss):
+    self.zero_grad()
+    loss.backward()
+    # deal grads
+
+    # grads check nan or inf
+    has_nan_inf = 0
+    for params in self.parameters():
+      if params.requires_grad:
+        has_nan_inf += torch.sum(torch.isnan(params.grad))
+        has_nan_inf += torch.sum(torch.isinf(params.grad))
+
+    # print('has_nan', has_nan_inf)
+
+    if has_nan_inf == 0:
+      self._optimizer.step()
+      self._lr_scheduler.step(self._global_step)
+      self._global_step += 1
+      return
+    self._nan_grads_batch += 1
 
   def forward(self, mixed_wav_batch):
     mixed_wav_batch = mixed_wav_batch
@@ -380,22 +431,27 @@ class PHASEN(nn.Module):
     mixed_stft_imag = mixed_stft_batch[:, 1, :, :] # [N, F, T]
     mixed_mag_batch = torch.sqrt(mixed_stft_real**2+mixed_stft_imag**2) # [N, F, T]
     mixed_angle_batch = torch.atan2(mixed_stft_imag, mixed_stft_real) # [N, F, T]
+    mixed_normed_stft_batch = torch.cat([torch.cos(mixed_angle_batch).unsqueeze_(1),
+                                         torch.sin(mixed_angle_batch).unsqueeze_(1)], dim=1)
     self.mixed_wav_features = WavFeatures(wav_batch=mixed_wav_batch,
                                           stft_batch=mixed_stft_batch,
                                           mag_batch=mixed_mag_batch,
-                                          angle_batch=mixed_angle_batch)
+                                          angle_batch=mixed_angle_batch,
+                                          normed_stft_batch=mixed_normed_stft_batch)
 
     feature_in = self.mixed_wav_features # [N, 2, F, T]
 
-    net_phasen_out = self.net_model(feature_in)
+    net_phasen_out = self._net_model(feature_in)
 
+    # print(self.mixed_wav_features.mag_batch.size(), net_phasen_out.mag_mask.size())
+    est_clean_angle_batch = net_phasen_out.angle
     est_clean_mag_batch = torch.mul(
         self.mixed_wav_features.mag_batch, net_phasen_out.mag_mask)  # [batch, F, T]
     mag_shape = est_clean_mag_batch.size()
-    est_complexPhase_batch = net_phasen_out.normalized_complex_phase # [bathch, 2, F, T]
+    est_normed_stft_batch = net_phasen_out.normalized_complex_phase # [bathch, 2, F, T]
     est_clean_stft_batch = torch.mul(
         est_clean_mag_batch.view([mag_shape[0], 1, mag_shape[1], mag_shape[2]]),
-        est_complexPhase_batch)
+        est_normed_stft_batch)
     est_clean_wav_batch = self._istft_fn(est_clean_stft_batch)
     _mixed_wav_length = self.mixed_wav_features.wav_batch.size()[-1]
     est_clean_wav_batch = est_clean_wav_batch[:, :_mixed_wav_length]
@@ -403,7 +459,8 @@ class PHASEN(nn.Module):
     return WavFeatures(wav_batch=est_clean_wav_batch,
                        stft_batch=est_clean_stft_batch,
                        mag_batch=est_clean_mag_batch,
-                       angle_batch=None)
+                       angle_batch=est_clean_angle_batch,
+                       normed_stft_batch=est_normed_stft_batch)
 
   def get_losses(self, est_wav_features:WavFeatures, clean_wav_batch):
     if clean_wav_batch is not None:
@@ -412,19 +469,24 @@ class PHASEN(nn.Module):
       clean_stft_real = self.clean_stft_batch[:, 0, :, :] # [N, F, T]
       clean_stft_imag = self.clean_stft_batch[:, 1, :, :] # [N, F, T]
       self.clean_mag_batch = torch.sqrt(clean_stft_real**2+clean_stft_imag**2) # [N, F, T]
-      # self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
+      self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
+      self.clean_normed_stft_batch = torch.cat([torch.cos(self.clean_angle_batch).unsqueeze_(1),
+                                                torch.sin(self.clean_angle_batch).unsqueeze_(1)], dim=1)
 
     est_clean_mag_batch = est_wav_features.mag_batch
     est_clean_stft_batch = est_wav_features.stft_batch
     est_clean_wav_batch = est_wav_features.wav_batch
+    est_clean_normed_stft_batch = est_wav_features.normed_stft_batch
 
 
     # region losses
     self.loss_compressedMag_mse = losses.batchSum_compressedMag_mse(est_clean_mag_batch,
                                                                     self.clean_mag_batch,
                                                                     PARAM.loss_compressedMag_idx)
-    self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(est_clean_stft_batch,
-                                                                      self.clean_stft_batch,
+    self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(est_clean_mag_batch,
+                                                                      est_clean_normed_stft_batch,
+                                                                      self.clean_mag_batch,
+                                                                      self.clean_normed_stft_batch,
                                                                       PARAM.loss_compressedMag_idx)
 
 
@@ -449,9 +511,9 @@ class PHASEN(nn.Module):
     self.loss_wav_reL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
                                                      PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
-    self.loss_CosSim = losses.batch_CosSim_loss(
+    self.loss_CosSim = losses.batchMean_CosSim_loss(
         est_clean_wav_batch, self.clean_wav_batch)
-    self.loss_SquareCosSim = losses.batch_SquareCosSim_loss(
+    self.loss_SquareCosSim = losses.batchMean_SquareCosSim_loss(
         est_clean_wav_batch, self.clean_wav_batch)
     # self.loss_stCosSim = losses.batch_short_time_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
     #                                                          PARAM.st_frame_length_for_loss,
@@ -520,6 +582,13 @@ class PHASEN(nn.Module):
   def global_step(self):
     return self._global_step
 
+  @property
+  def start_epoch(self):
+    return self._start_epoch
+
+  @property
+  def nan_grads_batch(self):
+    return self._nan_grads_batch
 
   @property
   def optimizer_lr(self):

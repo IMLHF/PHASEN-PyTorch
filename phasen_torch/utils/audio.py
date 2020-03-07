@@ -19,7 +19,7 @@ def read_audio(file):
     data = librosa.resample(data, sr, PARAM.sampling_rate, res_type='kaiser_fast')
     print('resample wav(%d to %d) :' % (sr, PARAM.sampling_rate), file)
     # librosa.output.write_wav(file, data, PARAM.sampling_rate)
-  return data, PARAM.sampling_rate
+  return np.array(data, dtype=np.float32), PARAM.sampling_rate
 
 def write_audio(file, data, sr):
   return sf.write(file, data, sr)

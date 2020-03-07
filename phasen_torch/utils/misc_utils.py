@@ -6,6 +6,8 @@ import time
 from distutils import version
 from pathlib import Path
 import os
+import numpy as np
+import warnings
 
 from ..FLAGS import PARAM
 
@@ -14,8 +16,7 @@ def initial_run(config_name):
   assert config_name == PARAM().config_name(), (
       "config name error: dir.%s|FLAG.%s." % (config_name, PARAM().config_name()))
   check_torch_version()
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-  os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+  # warnings.filterwarnings("ignore")
   print_hparams()
 
 
@@ -70,8 +71,8 @@ def warmup_coef(global_step, warmup_steps=4000.):
   warmup_steps: scalar. During warmup_steps, learning rate increases
       until it reaches init_lr.
   '''
-  step = global_step + 1
-  return warmup_steps ** 0.5 * torch.min(step * warmup_steps ** -1.5, step ** -0.5)
+  step = global_step + 1.0
+  return warmup_steps ** 0.5 * min(step * warmup_steps ** -1.5, step ** -0.5)
 
 
 def show_variables(vars_):

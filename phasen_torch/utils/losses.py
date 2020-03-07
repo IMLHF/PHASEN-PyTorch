@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 def vec_dot_mul(y1, y2):
   dot_mul = torch.sum(torch.mul(y1, y2), dim=-1)
@@ -11,40 +12,35 @@ def vec_normal(y):
 def mag_fn(real, imag):
   return torch.sqrt(real**2+imag**2)
 
-def batchSum_MSE(y1, y2, _idx=2.0):
-  loss = torch.pow(y1-y2, _idx)
+def batchSum_MSE(y1, y2, _idx=2):
+  loss = (y1-y2)**_idx
   loss = torch.mean(torch.sum(loss, 0))
   return loss
 
-def batchSum_compressedMag_mse(y1, y2, compress_idx):
+def batchSum_compressedMag_mse(y1, y2, compress_idx, eps=1e-5):
   """
   y1>=0: real, [batch, F, T]
   y2>=0: real, [batch, F, T]
   """
-  y1 = torch.pow(y1, compress_idx)
-  y2 = torch.pow(y2, compress_idx)
+  y1 = torch.pow(y1+eps, compress_idx)
+  y2 = torch.pow(y2+eps, compress_idx)
   loss = batchSum_MSE(y1, y2)
   return loss
 
-def batchSum_compressedStft_mse(y1, y2, compress_idx):
+def batchSum_compressedStft_mse(est_mag, est_normstft, clean_mag, clean_normstft, compress_idx, eps=1e-5):
   """
-  y1: (real, imag), [batch, 2, F, T]
-  y2: (real, imag), [batch, 2, F, T]
+  est_mag:                real, [batch, F, T]
+  est_normstft:   (real, imag), [batch, 2, F, T]
+  clean_mag:              real, [batch, F, T]
+  clean_normstft: (real, imag), [batch, 2, F, T]
   """
-  y1_real = y1[:,:1,:,:] # [batch, 1, F, T]
-  y1_imag = y1[:,1:,:,:] # [batch, 1, F, T]
-  y2_real = y2[:,:1,:,:] # [batch, 1, F, T]
-  y2_imag = y2[:,1:,:,:] # [batch, 1, F, T]
-  y1_abs_cpr = torch.pow(mag_fn(y1_real, y1_imag), compress_idx) # [batch, 1, F, T]
-  y2_abs_cpr = torch.pow(mag_fn(y2_real, y2_imag), compress_idx)
-  y1_angle = torch.atan2(y1_imag, y1_real) # [batch, 1, F, T]
-  y2_angle = torch.atan2(y2_imag, y2_real)
-  y1_cpr_real = y1_abs_cpr * torch.cos(y1_angle)
-  y1_cpr_imag = y1_abs_cpr * torch.sin(y1_angle)
-  y2_cpr_real = y2_abs_cpr * torch.cos(y2_angle)
-  y2_cpr_imag = y2_abs_cpr * torch.sin(y2_angle)
-  loss = batchSum_MSE(y1_cpr_real, y2_cpr_real) + batchSum_MSE(y1_cpr_imag, y2_cpr_imag)
-  loss = loss * 0.5
+  # compress_idx = 1.0
+  est_abs_cpr = torch.pow(est_mag+eps, compress_idx).unsqueeze_(1) # [batch, 1, F, T]
+  clean_abs_cpr = torch.pow(clean_mag+eps, compress_idx).unsqueeze_(1)
+
+  est_cpr_stft = est_abs_cpr * est_normstft
+  clean_cpr_stft = clean_abs_cpr * clean_normstft
+  loss = batchSum_MSE(est_cpr_stft, clean_cpr_stft)
   return loss
 
 def batchSum_relativeMSE(y1, y2, RL_epsilon, index_=2.0):

@@ -35,4 +35,6 @@ class NoisyCleanDataset(Dataset):
       # noisy = audio.repeat_to_len(noisy, wav_len)
       # clean = audio.repeat_to_len(clean, wav_len)
       noisy, clean = audio.repeat_to_len_2(noisy, clean, wav_len, True)
-      return torch.from_numy(noisy), torch.from_numpy(clean), Path(noisy_dir).name, Path(clean_dir).name
+      noisy = torch.from_numpy(noisy)
+      clean = torch.from_numpy(clean)
+      return noisy, clean, Path(noisy_dir).name, Path(clean_dir).name

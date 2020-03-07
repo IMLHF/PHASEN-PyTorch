@@ -8,7 +8,7 @@ class StaticKey(object):
 
 class BaseConfig(StaticKey):
   VISIBLE_GPU = "0"
-  root_dir = '/home/lhf/worklhf/PHASEN/'
+  root_dir = '/home/lhf/worklhf/TorchPHASEN/'
   # datasets_name = 'vctk_musan_datasets'
   datasets_name = 'noisy_datasets_16k'
   '''
@@ -21,7 +21,7 @@ class BaseConfig(StaticKey):
   '''
 
   # min_TF_version = "1.14.0"
-  min_Torch_version = "1.3.0"
+  min_Torch_version = "1.0.0"
 
 
   train_noisy_set = 'noisy_trainset_wav'
@@ -54,7 +54,6 @@ class BaseConfig(StaticKey):
   GPU_RAM_ALLOW_GROWTH = True
   GPU_PARTION = 0.97
 
-  s_epoch = 1
   max_epoch = 40
   batches_to_logging = 200000
 
@@ -93,17 +92,17 @@ class BaseConfig(StaticKey):
 
 class p40(BaseConfig):
   # GPU_PARTION = 0.27
-  root_dir = '/home/zhangwenbo5/lihongfeng/PHASEN'
+  root_dir = '/home/zhangwenbo5/lihongfeng/TorchPHASEN'
 
 
-class se_phasen_001(p40): # done p40
+class se_phasen_001(p40): # runnning v100
   '''
   phasen 001
   loss_compressedMag_mse + loss_compressedStft_mse
   '''
   sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
   sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim"]
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim", "loss_stft_mse"]
   show_losses_w = []
   stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
   stop_criterion_losses_w = []
@@ -111,88 +110,23 @@ class se_phasen_001(p40): # done p40
   channel_P = 48
   n_TSB = 3
 
-class se_phasen_002(p40): # done p40
+class se_phasen_002(p40): # running v100
   '''
   phasen 002
   loss_mag_reMse|0050 + loss_CosSim
   '''
   sum_losses = ["loss_mag_reMse", "loss_CosSim"]
   sum_losses_w = []
-  show_losses = ["loss_mag_reMse", "loss_CosSim"]
+  show_losses = ["loss_mag_reMse", "loss_CosSim", "loss_stft_mse"]
   show_losses_w = []
-  stop_criterion_losses = ["loss_mag_reMse", "loss_CosSim"]
+  stop_criterion_losses = ["loss_mag_reMse", "loss_CosSim",]
   stop_criterion_losses_w = []
   relative_loss_epsilon = 0.05
   channel_A = 96
   channel_P = 48
   n_TSB = 3
 
-class se_phasen_003(p40): # pendding p40
-  '''
-  phasen 003
-  loss_mag_mse + loss_stft_mse
-  '''
-  sum_losses = ["loss_mag_mse", "loss_stft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_mag_mse", "loss_stft_mse", "loss_CosSim"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_mag_mse", "loss_stft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
 
-class se_phasen_004_selfConv2d(p40): # running p40
-  '''
-  phasen 004
-  loss_compressedMag_mse + loss_compressedStft_mse
-  Ca = 24, Cp = 12
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 24
-  channel_P = 12
-  n_TSB = 3
-
-class se_phasen_004_clipGrads(BaseConfig): # pendding 15123
-  '''
-  phasen 004_clipGrads
-  loss_compressedMag_mse + loss_compressedStft_mse
-  Ca = 12, Cp = 8
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 12
-  channel_P = 8
-  n_TSB = 3
-  clip_grads = True
-
-class se_phasen_005(p40): # pendding p40
-  '''
-  phasen 005
-  loss_compressedMag_mse + loss_compressedStft_mse
-  Ca = 12, Cp = 8
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 12
-  channel_P = 8
-  n_TSB = 3
-  learning_rate = 1e-3
-
-
-PARAM = se_phasen_004_selfConv2d ###
+PARAM = se_phasen_002 ###
 
 # CUDA_VISIBLE_DEVICES=2 OMP_NUM_THREADS=4 python -m xxx._2_train
