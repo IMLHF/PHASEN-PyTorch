@@ -1,0 +1,257 @@
+import os
+import sys
+import time
+import torch
+import collections
+import numpy as np
+from pathlib import Path
+from torch.utils.data import DataLoader
+
+
+from .models import phasen
+from .data_pipline import data_pipline
+from .utils import misc_utils
+from .FLAGS import PARAM
+
+
+class TrainOutputs(
+    collections.namedtuple("TrainOutputs",
+                           ("sum_loss", "stop_c_loss", "show_losses",
+                            "cost_time", "lr"))):
+  pass
+
+grads_nan_time = 0
+
+def train_one_epoch(train_model, train_batch_iter, train_log_file):
+  train_model.train()
+
+  s_time = time.time()
+  minbatch_time = time.time()
+  one_batch_time = time.time()
+
+  avg_sum_loss = None
+  avg_show_losses = None
+  avg_stop_c_loss = None
+  total_i = PARAM.n_train_set_records//PARAM.batch_size
+  for i, batch_in in enumerate(train_batch_iter, 1):
+    noisy_batch, clean_batch, _, _ = batch_in
+    noisy_batch = noisy_batch.to(train_model.device)
+    clean_batch = clean_batch.to(train_model.device)
+    est_features = train_model(noisy_batch)
+    losses = train_model.get_losses(est_features, clean_batch)
+    lr = train_model.optimizer_lr
+    train_model.update_params(losses.sum_loss)
+    sum_loss = losses.sum_loss.cpu().detach().numpy()
+    show_losses = losses.show_losses.cpu().detach().numpy()
+    stop_c_loss = losses.stop_criterion_loss.cpu().detach().numpy()
+
+    if avg_sum_loss is None:
+      avg_sum_loss = sum_loss
+      avg_show_losses = show_losses
+      avg_stop_c_loss = stop_c_loss
+    else:
+      avg_sum_loss += sum_loss
+      avg_show_losses += show_losses
+      avg_stop_c_loss += stop_c_loss
+    i += 1
+    print("\r", end="")
+    print(
+        "train: %d/%d, cost %.2fs, sum_loss %.4f, stop_loss %.4f, show_losses %s, lr %.2e"
+        "                  " % (
+          i, total_i, time.time()-one_batch_time, sum_loss, stop_c_loss,
+          str(np.round(show_losses, 4)), lr),
+        flush=True, end="")
+    one_batch_time = time.time()
+    if i % PARAM.batches_to_logging == 0:
+      print("\r", end="")
+      msg = "     Minbatch %04d: sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e, time:%ds. \n" % (
+              i, avg_sum_loss/i, avg_stop_c_loss/i, np.round(avg_show_losses/i, 4), lr, time.time()-minbatch_time,
+            )
+      minbatch_time = time.time()
+      misc_utils.print_log(msg, train_log_file)
+    # if i > 10 : break
+  print("\r", end="")
+  e_time = time.time()
+  avg_sum_loss = avg_sum_loss / total_i
+  avg_show_losses = avg_show_losses / total_i
+  avg_stop_c_loss = avg_stop_c_loss / total_i
+  return TrainOutputs(sum_loss=avg_sum_loss,
+                      stop_c_loss=avg_stop_c_loss,
+                      show_losses=np.round(avg_show_losses, 4),
+                      cost_time=e_time-s_time,
+                      lr=lr)
+
+
+class EvalOutputs(
+    collections.namedtuple("EvalOutputs",
+                           ("sum_loss", "show_losses",
+                            "stop_criterion_loss", "cost_time"))):
+  pass
+
+def round_lists(lst, rd):
+  return [round(n,rd) if type(n) is not list else round_lists(n,rd) for n in lst]
+
+def unfold_list(lst):
+  ans_lst = []
+  [ans_lst.append(n) if type(n) is not list else ans_lst.extend(unfold_list(n)) for n in lst]
+  return ans_lst
+
+def eval_one_epoch(val_model, val_batch_iter):
+  val_model.eval()
+
+  val_s_time = time.time()
+  ont_batch_time = time.time()
+
+  avg_sum_loss = None
+  avg_show_losses = None
+  avg_stop_c_loss = None
+  total_i = PARAM.n_val_set_records//PARAM.batch_size
+  for i, batch_in in enumerate(val_batch_iter, 1):
+    with torch.no_grad():
+      noisy_batch, clean_batch, _, _ = batch_in
+      noisy_batch = noisy_batch.to(val_model.device)
+      clean_batch = clean_batch.to(val_model.device)
+      # print(noisy_batch.dtype)
+      est_features = val_model(noisy_batch)
+      losses = val_model.get_losses(est_features, clean_batch)
+      sum_loss = losses.sum_loss.cpu().numpy()
+      show_losses = losses.show_losses.cpu().numpy()
+      stop_c_loss = losses.stop_criterion_loss.cpu().numpy()
+
+      # print(np.mean(val_model.clean_mag_batch.cpu().numpy()),
+      #       np.std(val_model.clean_mag_batch.cpu().numpy()),
+      #       np.mean(val_model.mixed_wav_features.mag_batch.cpu().numpy()),
+      #       np.std(val_model.mixed_wav_features.mag_batch.cpu().numpy()), flush=True)
+
+    if avg_sum_loss is None:
+      avg_sum_loss = sum_loss
+      avg_show_losses = show_losses
+      avg_stop_c_loss = stop_c_loss
+    else:
+      avg_sum_loss += sum_loss
+      avg_show_losses += show_losses
+      avg_stop_c_loss += stop_c_loss
+    # if i >5 : break
+    print("\r", end="")
+    print("validate: %d/%d, cost %.2fs, sum_loss %.4f, stop_loss %.4f, show_losses %s"
+          "                        " % (
+              i, total_i, time.time()-ont_batch_time, sum_loss, stop_c_loss,
+              str(np.round(show_losses, 4))
+          ),
+          flush=True, end="")
+    ont_batch_time = time.time()
+
+  print("\r", end="")
+  avg_sum_loss = avg_sum_loss / total_i
+  avg_show_losses = avg_show_losses / total_i
+  avg_stop_c_loss = avg_stop_c_loss / total_i
+  val_e_time = time.time()
+  return EvalOutputs(sum_loss=avg_sum_loss,
+                     show_losses=np.round(avg_show_losses, 4),
+                     stop_criterion_loss=avg_stop_c_loss,
+                     cost_time=val_e_time-val_s_time)
+
+
+def main():
+  train_log_file = misc_utils.train_log_file_dir()
+  ckpt_dir = misc_utils.ckpt_dir()
+  hparam_file = misc_utils.hparams_file_dir()
+  if not train_log_file.parent.exists():
+    os.makedirs(str(train_log_file.parent))
+  if not ckpt_dir.exists():
+    os.mkdir(str(ckpt_dir))
+
+  misc_utils.save_hparams(str(hparam_file))
+
+  noisy_trainset_wav = misc_utils.datasets_dir().joinpath(PARAM.train_noisy_set)
+  clean_trainset_wav = misc_utils.datasets_dir().joinpath(PARAM.train_clean_set)
+  noisy_valset_wav = misc_utils.datasets_dir().joinpath(PARAM.validation_noisy_set)
+  clean_valset_wav = misc_utils.datasets_dir().joinpath(PARAM.validation_clean_set)
+  train_dataset = data_pipline.NoisyCleanDataset(noisy_trainset_wav, clean_trainset_wav)
+  val_dataset = data_pipline.NoisyCleanDataset(noisy_valset_wav, clean_valset_wav)
+  train_batch_iter = DataLoader(train_dataset, batch_size=PARAM.batch_size,
+                                shuffle=True, num_workers=0)
+  val_batch_iter = DataLoader(val_dataset, batch_size=PARAM.batch_size,
+                              shuffle=True, num_workers=0)
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  # print(device)
+  phasen_model = phasen.PHASEN(PARAM.MODEL_TRAIN_KEY, device)
+
+  ckpt_lst = [str(_dir) for _dir in list(ckpt_dir.glob("*.ckpt"))]
+  if len(ckpt_lst) > 0:
+    ckpt_lst.sort()
+    phasen_model.load(ckpt_lst[-1])
+    misc_utils.print_log("load ckpt %s\n" % ckpt_lst[-1])
+  else:
+    for name, param in phasen_model.named_parameters():
+      print(name, ": ", param.size(), flush=True)
+
+    # region validation before training
+    misc_utils.print_log("\n\n", train_log_file)
+    misc_utils.print_log("sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
+    misc_utils.print_log("stop criterion losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
+    misc_utils.print_log("show losses: "+str(PARAM.show_losses)+"\n", train_log_file)
+    evalOutputs_prev = eval_one_epoch(phasen_model, val_batch_iter)
+    misc_utils.print_log("                                            "
+                         "                                            "
+                         "                                         \n",
+                         train_log_file, no_time=True)
+    val_msg = "PRERUN.val> sum_loss:%.4F, stop_loss:%.4F, show_losses:%s, Cost itme:%.2Fs.\n" % (
+        evalOutputs_prev.sum_loss,
+        evalOutputs_prev.stop_criterion_loss,
+        evalOutputs_prev.show_losses,
+        evalOutputs_prev.cost_time)
+    misc_utils.print_log(val_msg, train_log_file)
+
+  s_epoch = phasen_model.start_epoch
+  assert s_epoch > 0, 'start epoch > 0 is required.'
+
+  for epoch in range(s_epoch, PARAM.max_epoch+1):
+    misc_utils.print_log("\n\n", train_log_file, no_time=True)
+    misc_utils.print_log("  Epoch %03d:\n" % epoch, train_log_file)
+    misc_utils.print_log("   sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
+    misc_utils.print_log("   stop_criterion_losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
+    misc_utils.print_log("   show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
+
+    # train
+    trainOutputs = train_one_epoch(phasen_model, train_batch_iter, train_log_file)
+    misc_utils.print_log("     Train     > sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
+        trainOutputs.sum_loss,
+        trainOutputs.stop_c_loss,
+        trainOutputs.show_losses,
+        trainOutputs.lr,
+        trainOutputs.cost_time),
+        train_log_file)
+
+    # validation
+    evalOutputs = eval_one_epoch(phasen_model, val_batch_iter)
+    misc_utils.print_log("     Validation> sum_loss%.4f, stop_loss:%.4f, show_losses:%s, Time:%ds.           \n" % (
+        evalOutputs.sum_loss,
+        evalOutputs.stop_criterion_loss,
+        evalOutputs.show_losses,
+        evalOutputs.cost_time),
+        train_log_file)
+
+    # save ckpt
+    ckpt_name = PARAM().config_name()+('_iter%04d_trloss%.4f_valloss%.4f_lr%.2e_duration%ds.ckpt' % (
+        epoch, trainOutputs.sum_loss, evalOutputs.sum_loss, trainOutputs.lr,
+        trainOutputs.cost_time+evalOutputs.cost_time))
+    phasen_model.save_every_epoch(str(ckpt_dir.joinpath(ckpt_name)))
+    evalOutputs_prev = evalOutputs
+    msg = "     ckpt(%s) saved.\n" % ckpt_name
+    misc_utils.print_log(msg, train_log_file)
+
+  # Done
+  misc_utils.print_log("\n", train_log_file, no_time=True)
+  msg = ("NaN grads batches: %d\n"
+         "################### Training Done. ###################\n") % phasen_model.nan_grads_batch
+  misc_utils.print_log(msg, train_log_file)
+
+
+if __name__ == "__main__":
+  misc_utils.initial_run(sys.argv[0].split("/")[-2])
+  main()
+  """
+  run cmd:
+  `CUDA_VISIBLE_DEVICES=2 OMP_NUM_THREADS=1 python -m xx._2_train`
+  """
