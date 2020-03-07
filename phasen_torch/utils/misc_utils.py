@@ -9,22 +9,6 @@ import os
 
 from ..FLAGS import PARAM
 
-def tf_wav2mag(batch_wav, frame_length, frame_step, n_fft):
-  cstft = tf.signal.stft(batch_wav, frame_length, frame_step, fft_length=n_fft, pad_end=True)
-  feature = tf.math.abs(cstft)
-  return feature
-
-
-def tf_wav2stft(batch_wav, frame_length, frame_step, n_fft):
-  cstft = tf.signal.stft(batch_wav, frame_length, frame_step, fft_length=n_fft, pad_end=True)
-  return cstft
-
-
-def tf_stft2wav(batch_stft, frame_length, frame_step, n_fft):
-  signals = tf.signal.inverse_stft(batch_stft, frame_length, frame_step, fft_length=n_fft,
-                                   window_fn=tf.signal.inverse_stft_window_fn(frame_step))
-  return signals
-
 
 def initial_run(config_name):
   assert config_name == PARAM().config_name(), (
@@ -79,15 +63,15 @@ def datasets_dir():
   return Path(PARAM.root_dir).joinpath(PARAM.datasets_name)
 
 
-def noam_scheme(init_lr, global_step, warmup_steps=4000.):
+def warmup_coef(global_step, warmup_steps=4000.):
   '''Noam scheme learning rate decay
   init_lr: initial learning rate. scalar.
   global_step: scalar.
   warmup_steps: scalar. During warmup_steps, learning rate increases
       until it reaches init_lr.
   '''
-  step = tf.cast(global_step + 1, dtype=tf.float32)
-  return init_lr * warmup_steps ** 0.5 * tf.minimum(step * warmup_steps ** -1.5, step ** -0.5)
+  step = global_step + 1
+  return warmup_steps ** 0.5 * torch.min(step * warmup_steps ** -1.5, step ** -0.5)
 
 
 def show_variables(vars_):
