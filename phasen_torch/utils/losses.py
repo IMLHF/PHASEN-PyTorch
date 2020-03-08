@@ -3,10 +3,12 @@ import torch.nn.functional as F
 
 def vec_dot_mul(y1, y2):
   dot_mul = torch.sum(torch.mul(y1, y2), dim=-1)
+  # print('dot', dot_mul.size())
   return dot_mul
 
 def vec_normal(y):
   normal_ = torch.sqrt(torch.sum(y**2, dim=-1))
+  # print('norm',normal_.size())
   return normal_
 
 def mag_fn(real, imag):
@@ -64,12 +66,14 @@ def batchMean_CosSim_loss(est, ref): # -cos
   '''
   est, ref: [batch, ..., n_sample]
   '''
+  # print(est.size(), ref.size(), flush=True)
   cos_sim = - torch.div(vec_dot_mul(est, ref), # [batch, ...]
                         torch.mul(vec_normal(est), vec_normal(ref)))
   loss = torch.mean(cos_sim)
   return loss
 
 def batchMean_SquareCosSim_loss(est, ref): # -cos^2
+  # print('23333')
   loss_s1 = - torch.div(vec_dot_mul(est, ref)**2,  # [batch, ...]
                         torch.mul(vec_dot_mul(est, est), vec_dot_mul(ref, ref)))
   loss = torch.mean(loss_s1)

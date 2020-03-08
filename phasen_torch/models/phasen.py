@@ -478,43 +478,76 @@ class PHASEN(nn.Module):
     est_clean_wav_batch = est_wav_features.wav_batch
     est_clean_normed_stft_batch = est_wav_features.normed_stft_batch
 
+    all_losses = list()
+    all_losses.extend(PARAM.sum_losses)
+    all_losses.extend(PARAM.show_losses)
+    all_losses.extend(PARAM.stop_criterion_losses)
+    all_losses = set(all_losses)
+
+    self.loss_compressedMag_mse = 0
+    self.loss_compressedStft_mse = 0
+    self.loss_mag_mse = 0
+    self.loss_mag_reMse = 0
+    self.loss_stft_mse = 0
+    self.loss_stft_reMse = 0
+    self.loss_mag_mae = 0
+    self.loss_mag_reMae = 0
+    self.loss_stft_mae = 0
+    self.loss_stft_reMae = 0
+    self.loss_wav_L1 = 0
+    self.loss_wav_L2 = 0
+    self.loss_wav_reL2 = 0
+    self.loss_CosSim = 0
+    self.loss_SquareCosSim = 0
 
     # region losses
-    self.loss_compressedMag_mse = losses.batchSum_compressedMag_mse(est_clean_mag_batch,
-                                                                    self.clean_mag_batch,
-                                                                    PARAM.loss_compressedMag_idx)
-    self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(est_clean_mag_batch,
-                                                                      est_clean_normed_stft_batch,
-                                                                      self.clean_mag_batch,
-                                                                      self.clean_normed_stft_batch,
-                                                                      PARAM.loss_compressedMag_idx)
+    if "loss_compressedMag_mse" in all_losses:
+      self.loss_compressedMag_mse = losses.batchSum_compressedMag_mse(
+          est_clean_mag_batch, self.clean_mag_batch, PARAM.loss_compressedMag_idx)
+    if "loss_compressedStft_mse" in all_losses:
+      self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(
+          est_clean_mag_batch, est_clean_normed_stft_batch,
+          self.clean_mag_batch, self.clean_normed_stft_batch,
+          PARAM.loss_compressedMag_idx)
 
 
-    self.loss_mag_mse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
-    self.loss_mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
-                                                      PARAM.relative_loss_epsilon, PARAM.RL_idx)
-    self.loss_stft_mse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
-    self.loss_stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
+    if "loss_mag_mse" in all_losses:
+      self.loss_mag_mse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
+    if "loss_mag_reMse" in all_losses:
+      self.loss_mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
+                                                        PARAM.relative_loss_epsilon, PARAM.RL_idx)
+    if "loss_stft_mse" in all_losses:
+      self.loss_stft_mse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
+    if "loss_stft_reMse" in all_losses:
+      self.loss_stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
+                                                         PARAM.relative_loss_epsilon, PARAM.RL_idx)
+
+
+    if "loss_mag_mae" in all_losses:
+      self.loss_mag_mae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
+    if "loss_mag_reMae" in all_losses:
+      self.loss_mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
+                                                        PARAM.relative_loss_epsilon)
+    if "loss_stft_mae" in all_losses:
+      self.loss_stft_mae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
+    if "loss_stft_reMae" in all_losses:
+      self.loss_stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
+                                                         PARAM.relative_loss_epsilon)
+
+
+    if "loss_wav_L1" in all_losses:
+      self.loss_wav_L1 = losses.batchSum_MAE(est_clean_wav_batch, self.clean_wav_batch)
+    if "loss_wav_L2" in all_losses:
+      self.loss_wav_L2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
+    if "loss_wav_reL2" in all_losses:
+      self.loss_wav_reL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
                                                        PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
-
-    self.loss_mag_mae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
-    self.loss_mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
-                                                      PARAM.relative_loss_epsilon)
-    self.loss_stft_mae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
-    self.loss_stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
-                                                       PARAM.relative_loss_epsilon)
-
-
-    self.loss_wav_L1 = losses.batchSum_MAE(est_clean_wav_batch, self.clean_wav_batch)
-    self.loss_wav_L2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
-    self.loss_wav_reL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
-                                                     PARAM.relative_loss_epsilon, PARAM.RL_idx)
-
-    self.loss_CosSim = losses.batchMean_CosSim_loss(
-        est_clean_wav_batch, self.clean_wav_batch)
-    self.loss_SquareCosSim = losses.batchMean_SquareCosSim_loss(
-        est_clean_wav_batch, self.clean_wav_batch)
+    if "loss_CosSim" in all_losses:
+      self.loss_CosSim = losses.batchMean_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch)
+    if "loss_SquareCosSim" in all_losses:
+      self.loss_SquareCosSim = losses.batchMean_SquareCosSim_loss(
+          est_clean_wav_batch, self.clean_wav_batch)
     # self.loss_stCosSim = losses.batch_short_time_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
     #                                                          PARAM.st_frame_length_for_loss,
     #                                                          PARAM.st_frame_step_for_loss)
