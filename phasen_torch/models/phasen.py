@@ -425,7 +425,7 @@ class PHASEN(nn.Module):
     self._nan_grads_batch += 1
 
   def __call__(self, mixed_wav_batch):
-    mixed_wav_batch = mixed_wav_batch
+    mixed_wav_batch = mixed_wav_batch.to(self.device)
     mixed_stft_batch = self._stft_fn(mixed_wav_batch) # [N, 2, F, T]
     mixed_stft_real = mixed_stft_batch[:, 0, :, :] # [N, F, T]
     mixed_stft_imag = mixed_stft_batch[:, 1, :, :] # [N, F, T]
@@ -463,15 +463,14 @@ class PHASEN(nn.Module):
                        normed_stft_batch=est_normed_stft_batch)
 
   def get_losses(self, est_wav_features:WavFeatures, clean_wav_batch):
-    if clean_wav_batch is not None:
-      self.clean_wav_batch = clean_wav_batch
-      self.clean_stft_batch = self._stft_fn(self.clean_wav_batch) # [N, 2, F, T]
-      clean_stft_real = self.clean_stft_batch[:, 0, :, :] # [N, F, T]
-      clean_stft_imag = self.clean_stft_batch[:, 1, :, :] # [N, F, T]
-      self.clean_mag_batch = torch.sqrt(clean_stft_real**2+clean_stft_imag**2) # [N, F, T]
-      self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
-      self.clean_normed_stft_batch = torch.cat([torch.cos(self.clean_angle_batch).unsqueeze_(1),
-                                                torch.sin(self.clean_angle_batch).unsqueeze_(1)], dim=1)
+    self.clean_wav_batch = clean_wav_batch.to(self.device)
+    self.clean_stft_batch = self._stft_fn(self.clean_wav_batch) # [N, 2, F, T]
+    clean_stft_real = self.clean_stft_batch[:, 0, :, :] # [N, F, T]
+    clean_stft_imag = self.clean_stft_batch[:, 1, :, :] # [N, F, T]
+    self.clean_mag_batch = torch.sqrt(clean_stft_real**2+clean_stft_imag**2) # [N, F, T]
+    self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
+    self.clean_normed_stft_batch = torch.cat([torch.cos(self.clean_angle_batch).unsqueeze_(1),
+                                              torch.sin(self.clean_angle_batch).unsqueeze_(1)], dim=1)
 
     est_clean_mag_batch = est_wav_features.mag_batch
     est_clean_stft_batch = est_wav_features.stft_batch
