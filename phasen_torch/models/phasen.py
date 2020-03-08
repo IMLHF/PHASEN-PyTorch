@@ -424,7 +424,7 @@ class PHASEN(nn.Module):
       return
     self._nan_grads_batch += 1
 
-  def forward(self, mixed_wav_batch):
+  def __call__(self, mixed_wav_batch):
     mixed_wav_batch = mixed_wav_batch
     mixed_stft_batch = self._stft_fn(mixed_wav_batch) # [N, 2, F, T]
     mixed_stft_real = mixed_stft_batch[:, 0, :, :] # [N, F, T]
