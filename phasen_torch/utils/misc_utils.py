@@ -110,8 +110,8 @@ def check_torch_version():
   # LINT.IfChange
   min_torch_version = PARAM.min_Torch_version
   # LINT.ThenChange(<pwd>/nmt/copy.bara.sky)
-  if not (version.LooseVersion(torch.__version__) == version.LooseVersion(min_torch_version)):
-    raise EnvironmentError("PyTorch version must be '%s'" % min_torch_version)
+  if not (version.LooseVersion(torch.__version__) >= version.LooseVersion(min_torch_version)):
+    raise EnvironmentError("PyTorch version must be greater '%s'" % min_torch_version)
 
 
 def save_hparams(f):
