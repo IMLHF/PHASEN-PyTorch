@@ -16,14 +16,16 @@ from .inference import enhance_one_wav
 from .FLAGS import PARAM
 
 test_processor = 1
+ckpt = None
+noisy_phase=False
 model = None
 
 def enhance_mini_process(noisy_dir, enhanced_save_dir):
   global model
   if model is None:
-    model = build_model()
+    model = build_model(ckpt_dir=ckpt)
   noisy_wav, sr = audio.read_audio(noisy_dir)
-  enhanced_wav = enhance_one_wav(model, noisy_wav)
+  enhanced_wav = enhance_one_wav(model, noisy_wav, noisy_phase)
   noisy_name = Path(noisy_dir).stem
   audio.write_audio(os.path.join(enhanced_save_dir, noisy_name+'_enhanced.wav'),
                     enhanced_wav, PARAM.sampling_rate)
@@ -54,12 +56,24 @@ def main():
 if __name__ == "__main__":
   misc_utils.initial_run(sys.argv[0].split("/")[-2])
 
-  if len(sys.argv) > 1:
-    test_processor = int(sys.argv[1])
+  import argparse
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--n_process', default=1, type=int, help="n processor")
+  parser.add_argument('--ckpt', default=None, help="ckpt dir")
+  parser.add_argument('--noisy_phase', default=False, type=bool, help='if use noisy phase')
+  args = parser.parse_args()
+
+  test_processor = args.n_process
+  ckpt = args.ckpt
+  noisy_phase = args.noisy_phase
+
+  if noisy_phase:
+    print("use noisy phase.", flush=True)
+
   main()
 
   """
   run cmd:
-  `OMP_NUM_THREADS=1 python -m xx._3_enhance_testsets 3`
+  `OMP_NUM_THREADS=1 python -m xx._3_enhance_testsets --n_process=2 --noisy_phase=False`
   [csig,cbak,cvol,pesq,snr,ssnr]=evaluate_all('/home/lhf/worklhf/PHASEN/noisy_datasets_16k/clean_testset_wav','/home/lhf/worklhf/PHASEN/exp/se_reMagMSE_cnn/enhanced_testsets/noisy_testset_wav')
   """

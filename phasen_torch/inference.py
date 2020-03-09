@@ -20,8 +20,17 @@ def build_model(ckpt_dir=None):
   return phasen_model
 
 
-def enhance_one_wav(model: phasen.PHASEN, wav):
+def enhance_one_wav(model: phasen.PHASEN, wav, use_noisy_phase=False):
   wav_batch = torch.from_numpy(np.array([wav], dtype=np.float32))
-  est_features = model(wav_batch)
-  enhanced_wav = est_features.wav_batch.cpu().numpy()[0]
+  len_wav = len(wav)
+  with torch.no_grad():
+    est_features = model(wav_batch)
+    if not use_noisy_phase:
+      enhanced_wav = est_features.wav_batch.cpu().numpy()[0]
+    else:
+      enhanced_mag = est_features.mag_batch.unsqueeze(1) # [B, 1, F, T]
+      noisy_phase = model.mixed_wav_features.normed_stft_batch # [B, 2, F, T]
+      enhanced_stft = enhanced_mag * noisy_phase
+      enhanced_wav = model._istft_fn(enhanced_stft).cpu().numpy()[0][:len_wav]
+      # print('noisy_phase', flush=True)
   return enhanced_wav
