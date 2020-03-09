@@ -307,11 +307,19 @@ class NET_PHASEN_OUT(
 class NetPHASEN(nn.Module):
   def __init__(self):
     super(NetPHASEN, self).__init__()
+    sA_in_channel = {
+      "stft":2,
+      "mag":1,
+    }[PARAM.stream_A_feature_type]
+    sP_in_channel = {
+      "stft":2,
+      "normed_stft":2,
+    }[PARAM.stream_P_feature_type]
     self.streamA_prenet = Stream_PreNet(
-        2, PARAM.channel_A, kernels=PARAM.prenet_A_kernels,
+        sA_in_channel, PARAM.channel_A, kernels=PARAM.prenet_A_kernels,
         conv2d_bn=True, conv2d_activation=nn.ReLU(inplace=True))
     self.streamP_prenet = Stream_PreNet(
-        2, PARAM.channel_P, PARAM.prenet_P_kernels)
+        sP_in_channel, PARAM.channel_P, PARAM.prenet_P_kernels)
     self.layers_TSB = nn.ModuleList()
     for i in range(1, PARAM.n_TSB+1):
       tsb_t = TwoStreamBlock(
@@ -329,10 +337,17 @@ class NetPHASEN(nn.Module):
       mag_batch[batch, time, fre]->real,
       normalized_complex_phase[batch, time, fre, 2]->(real, imag)
     '''
-    inputs = mixed_wav_features.stft_batch # [N, 2, F, T]
+    sA_inputs = {
+      "stft":mixed_wav_features.stft_batch, # [N, 2, F, T]
+      "mag":mixed_wav_features.mag_batch.unsqueeze(1), # [N, 1, F, T]
+    }[PARAM.stream_A_feature_type]
+    sP_inputs = {
+      "stft":mixed_wav_features.stft_batch, # [N, 2, F, T]
+      "normed_stft":mixed_wav_features.normed_stft_batch,
+    }[PARAM.stream_P_feature_type]
 
-    sA_out = self.streamA_prenet(inputs)  # [batch, Ca, f, t]
-    sP_out = self.streamP_prenet(inputs)  # [batch, Cp, f, t]
+    sA_out = self.streamA_prenet(sA_inputs)  # [batch, Ca, f, t]
+    sP_out = self.streamP_prenet(sP_inputs)  # [batch, Cp, f, t]
     for tsb in self.layers_TSB:
       sA_out, sP_out = tsb(sA_out, sP_out)
     sA_out = self.streamA_postnet(sA_out)  # [batch, f, t]
