@@ -59,16 +59,17 @@ if __name__ == "__main__":
   import argparse
   parser = argparse.ArgumentParser()
   parser.add_argument('--n_process', default=1, type=int, help="n processor")
-  parser.add_argument('--ckpt', default=None, help="ckpt dir")
-  parser.add_argument('--noisy_phase', default=False, type=bool, help='if use noisy phase')
+  parser.add_argument('--ckpt', default=None, type=str, help="ckpt dir")
+  parser.add_argument('--noisy_phase', default=0, type=int, help='if use noisy phase')
   args = parser.parse_args()
 
   test_processor = args.n_process
   ckpt = args.ckpt
-  noisy_phase = args.noisy_phase
+  noisy_phase = bool(args.noisy_phase)
 
-  if noisy_phase:
-    print("use noisy phase.", flush=True)
+  print('n_process:', args.n_process)
+  print("noisy_phase:", noisy_phase)
+  print('ckpt:', args.ckpt)
 
   main()
 
