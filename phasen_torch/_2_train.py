@@ -11,7 +11,11 @@ from torch.utils.data import DataLoader
 from .models import phasen
 from .data_pipline import data_pipline
 from .utils import misc_utils
+from .utils import audio
+from .sepm import compare
 from .FLAGS import PARAM
+
+np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
 
 
 class TrainOutputs(
@@ -64,7 +68,7 @@ def train_one_epoch(train_model, train_batch_iter, train_log_file):
     one_batch_time = time.time()
     if i % PARAM.batches_to_logging == 0:
       print("\r", end="")
-      msg = "     Minbatch %04d: sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e, time:%ds. \n" % (
+      msg = "  Minbatch %04d: sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e, time:%ds. \n" % (
               i, avg_sum_loss/i, avg_stop_c_loss/i, np.round(avg_show_losses/i, 4), lr, time.time()-minbatch_time,
             )
       minbatch_time = time.time()
@@ -152,6 +156,54 @@ def eval_one_epoch(val_model, val_batch_iter):
                      cost_time=val_e_time-val_s_time)
 
 
+class TestOutputs(
+    collections.namedtuple("TestOutputs",
+                           ("csig", "cbak", "covl", "pesq", "ssnr",
+                            "cost_time"))):
+  pass
+
+def test_one_epoch(test_model):
+  t1 = time.time()
+  testset_name = PARAM.test_noisy_sets[0]
+  testset_dir = misc_utils.datasets_dir().joinpath(testset_name)
+  _dir = misc_utils.enhanced_testsets_save_dir(testset_name)
+  if _dir.exists():
+    import shutil
+    shutil.rmtree(str(_dir))
+  _dir.mkdir(parents=True)
+  enhanced_save_dir = str(_dir)
+
+  noisy_path_list = list(map(str, testset_dir.glob("*.wav")))
+  noisy_num = len(noisy_path_list)
+  for i, noisy_path in enumerate(noisy_path_list):
+    print("\renhance test wavs: %d/%d" % (i, noisy_num), flush=True, end="")
+    noisy_wav, sr = audio.read_audio(noisy_path)
+    with torch.no_grad():
+      noisy_inputs = torch.from_numpy(np.array([noisy_wav], dtype=np.float32))
+      noisy_inputs = noisy_inputs.to(test_model.device)
+      est_features = test_model(noisy_inputs)
+      noisy_name = Path(noisy_path).stem
+      est_wav = est_features.wav_batch.cpu().numpy()
+    audio.write_audio(os.path.join(enhanced_save_dir, noisy_name+'_enhanced.wav'),
+                      est_wav, PARAM.sampling_rate)
+  print("\r                                                               \r", end="", flush=True)
+
+  testset_name, cleanset_name = PARAM.test_noisy_sets[0], PARAM.test_clean_sets[0]
+  print("\rCalculate PM %s:" % testset_name, flush=True, end="")
+  ref_dir = str(misc_utils.datasets_dir().joinpath(cleanset_name))
+  deg_dir = str(misc_utils.enhanced_testsets_save_dir(testset_name))
+  res = compare(ref_dir, deg_dir, False)
+
+  pm = np.array([x[1:] for x in res])
+  pm = np.mean(pm, axis=0)
+  pm = tuple(pm)
+  print("\r                                                                    "
+        "                                                                      \r", end="")
+  t2 = time.time()
+  return TestOutputs(csig=pm[0], cbak=pm[1], covl=pm[2], pesq=pm[3], ssnr=pm[4],
+                     cost_time=t2-t1)
+
+
 def main():
   train_log_file = misc_utils.train_log_file_dir()
   ckpt_dir = misc_utils.ckpt_dir()
@@ -205,17 +257,18 @@ def main():
 
   s_epoch = phasen_model.start_epoch
   assert s_epoch > 0, 'start epoch > 0 is required.'
+  max_epoch = int(PARAM.max_step / (PARAM.n_train_set_records / PARAM.batch_size))
 
-  for epoch in range(s_epoch, PARAM.max_epoch+1):
+  for epoch in range(s_epoch, max_epoch+1):
     misc_utils.print_log("\n\n", train_log_file, no_time=True)
-    misc_utils.print_log("  Epoch %03d:\n" % epoch, train_log_file)
-    misc_utils.print_log("   sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
-    misc_utils.print_log("   stop_criterion_losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
-    misc_utils.print_log("   show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
+    misc_utils.print_log("Epoch %03d/%03d:\n" % (epoch, max_epoch+1), train_log_file)
+    misc_utils.print_log("  sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
+    misc_utils.print_log("  stop_criterion_losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
+    misc_utils.print_log("  show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
 
     # train
     trainOutputs = train_one_epoch(phasen_model, train_batch_iter, train_log_file)
-    misc_utils.print_log("     Train     > sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
+    misc_utils.print_log("  Train     > sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
         trainOutputs.sum_loss,
         trainOutputs.stop_c_loss,
         trainOutputs.show_losses,
@@ -225,20 +278,28 @@ def main():
 
     # validation
     evalOutputs = eval_one_epoch(phasen_model, val_batch_iter)
-    misc_utils.print_log("     Validation> sum_loss%.4f, stop_loss:%.4f, show_losses:%s, Time:%ds.           \n" % (
+    misc_utils.print_log("  Validation> sum_loss%.4f, stop_loss:%.4f, show_losses:%s, Time:%ds.           \n" % (
         evalOutputs.sum_loss,
         evalOutputs.stop_criterion_loss,
         evalOutputs.show_losses,
         evalOutputs.cost_time),
         train_log_file)
 
+    # test
+    testOutputs = test_one_epoch(phasen_model)
+    misc_utils.print_log("  Test      > Csig: %.3f, Cbak: %.3f, Covl: %.3f, pesq: %.3f,"
+                         " ssnr: %.4f, Time:%ds.           \n" % (
+                             testOutputs.csig, testOutputs.cbak, testOutputs.covl, testOutputs.pesq,
+                             testOutputs.ssnr, testOutputs.cost_time),
+                         train_log_file)
+
     # save ckpt
     ckpt_name = PARAM().config_name()+('_iter%04d_trloss%.4f_valloss%.4f_lr%.2e_duration%ds.ckpt' % (
         epoch, trainOutputs.sum_loss, evalOutputs.sum_loss, trainOutputs.lr,
-        trainOutputs.cost_time+evalOutputs.cost_time))
+        trainOutputs.cost_time+evalOutputs.cost_time+testOutputs.cost_time))
     phasen_model.save_every_epoch(str(ckpt_dir.joinpath(ckpt_name)))
     evalOutputs_prev = evalOutputs
-    msg = "     ckpt(%s) saved.\n" % ckpt_name
+    msg = "  ckpt(%s) saved.\n" % ckpt_name
     misc_utils.print_log(msg, train_log_file)
 
   # Done
