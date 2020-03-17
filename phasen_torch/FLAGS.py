@@ -54,7 +54,7 @@ class BaseConfig(StaticKey):
   GPU_RAM_ALLOW_GROWTH = True
   GPU_PARTION = 0.97
 
-  max_epoch = 40
+  max_step = 40000
   batches_to_logging = 200000
 
   use_lr_warmup = True # true: lr warmup; false: lr halving
@@ -85,6 +85,8 @@ class BaseConfig(StaticKey):
 
   stream_A_feature_type = "stft" # "stft" | "mag"
   stream_P_feature_type = "stft" # "stft" | "normed_stft"
+  stft_norm_method = "atan2" # atan2 | div
+  stft_div_norm_eps = 1e-5 # for stft_norm_method=div
 
   clip_grads = False
 
@@ -94,7 +96,7 @@ class p40(BaseConfig):
   root_dir = '/home/zhangwenbo5/lihongfeng/TorchPHASEN'
 
 
-class test001(p40): # runnning v100
+class test001(p40): # done v100
   '''
   phasen 001
   loss_compressedMag_mse + loss_compressedStft_mse
@@ -110,7 +112,7 @@ class test001(p40): # runnning v100
   n_TSB = 3
 
 
-class se_phasen_001(p40): # runnning v100
+class se_phasen_001(p40): # done v100
   '''
   phasen 001
   loss_compressedMag_mse + loss_compressedStft_mse
@@ -126,7 +128,7 @@ class se_phasen_001(p40): # runnning v100
   n_TSB = 3
 
 
-class se_phasen_002(p40): # running v100
+class se_phasen_002(p40): # done v100
   '''
   phasen 002
   loss_mag_reMse|0050 + loss_CosSim
@@ -143,7 +145,7 @@ class se_phasen_002(p40): # running v100
   n_TSB = 3
 
 
-class se_phasen_003(p40): # runnning v100
+class se_phasen_003(p40): # done v100
   '''
   phasen 003
   loss_compressedMag_mse + loss_compressedStft_mse
@@ -160,7 +162,7 @@ class se_phasen_003(p40): # runnning v100
   stream_A_feature_type = "mag"
 
 
-class se_phasen_004(p40): # runnning v100
+class se_phasen_004(p40): # done v100
   '''
   phasen 004
   loss_compressedMag_mse + loss_compressedStft_mse
@@ -177,7 +179,105 @@ class se_phasen_004(p40): # runnning v100
   stream_A_feature_type = "mag"
   stream_P_feature_type = "normed_stft"
 
+class se_phasen_005(p40): # done v100
+  '''
+  phasen 005
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
 
-PARAM = se_phasen_004 ###
+#  fix bug blstm inputs error then continue
 
-# CUDA_VISIBLE_DEVICES=2 OMP_NUM_THREADS=4 python -m xxx._2_train
+class se_phasen_fix005(p40): # done v100
+  '''
+  phasen fix005
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+
+class se_phasen_007(p40): # done v100
+  '''
+  phasen 007
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-6
+
+class se_phasen_008(p40): # done v100
+  '''
+  phasen 008
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-5
+
+class se_phasen_009(p40): # running v100
+  '''
+  phasen 009
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-8
+
+
+PARAM = se_phasen_009 ###
+
+# CUDA_VISIBLE_DEVICES=6 OMP_NUM_THREADS=4 python -m se_phasen_009._2_train
