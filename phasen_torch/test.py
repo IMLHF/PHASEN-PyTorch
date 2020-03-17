@@ -8,6 +8,7 @@ from .utils import misc_utils
 from .utils import audio
 from .utils.assess import core as assess_core
 from .models import conv_stft
+from .utils import losses
 from .FLAGS import PARAM
 
 def test_dataloader():
@@ -43,6 +44,17 @@ def wav_through_stft_istft():
   stoi = assess_core.calc_stoi(wav, wav_np, sr)
   print(pesq, sdr, stoi)
 
+def testCosSim():
+  a=torch.randn([12,48000], dtype=torch.float32)
+  b=torch.randn([12,48000], dtype=torch.float32)
+  a = a / 1e100
+  a[:,0] = 1
+  # b=torch.randn([12,48000])
+  loss = losses.batchMean_CosSim_loss(a,b)
+  print(loss.dtype)
+
+
 if __name__ == "__main__":
   # test_dataloader()
-  wav_through_stft_istft()
+  # wav_through_stft_istft()
+  testCosSim()
