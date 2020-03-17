@@ -98,7 +98,7 @@ class NodeReshape(nn.Module):
     batch = shape[0]
     new_shape = [batch]
     new_shape.extend(list(self.shape))
-    return feature_in.view(new_shape)
+    return feature_in.reshape(new_shape)
 
 
 class FrequencyTransformationBlock(nn.Module):
@@ -237,7 +237,8 @@ class StreamAmplitude_PostNet(nn.Module):
                                 padding="same") #[N, 8, F, T]
 
     uni_rnn_units = 600
-    self.p1_reshape = NodeReshape([frequency_dim * 8, -1])
+    # add transpose ->[N, T, F, C]
+    self.p1_reshape = NodeReshape([-1, frequency_dim * 8])
     self.p2_blstm = nn.LSTM(frequency_dim * 8, uni_rnn_units, batch_first=True, bidirectional=True)
 
     self.p3_dense = nn.Sequential(nn.Linear(uni_rnn_units * 2, 600), nn.ReLU(inplace=True))
@@ -246,17 +247,18 @@ class StreamAmplitude_PostNet(nn.Module):
 
   def forward(self, feature_sA):
     '''
-    return [batch, T, F]
+    input: [N, C, F, T]
+    return [N, F, T]
     '''
     out = feature_sA
-    out = self.p1_conv2d(out)
-    out = self.p1_reshape(out) # [N, 8*F, T]
-    out = torch.transpose(out, 1, 2) # [N, T, 8*F]
+    out = self.p1_conv2d(out) # [N, 8, F, T]
+    out = torch.transpose(out, 1, 3) # [N, T, F, 8]
+    out = self.p1_reshape(out) # [N, T, F*8]
     out = self.p2_blstm(out)[0] # [N, T, 2*600]
     out = self.p3_dense(out)
     out = self.p4_dense(out)
     out = self.out_dense(out) # [N, T, F]
-    out = torch.transpose(out, 1, 2)
+    out = torch.transpose(out, 1, 2) # [N, F, T]
     return out
 
 
@@ -267,24 +269,23 @@ class StreamPhase_PostNet(nn.Module):
 
   def forward(self, feature_sP:torch.Tensor):
     '''
-    return [batch, T, F]->complex
+    return [N, 2, F, T]->complex
     '''
     out = feature_sP
     out = self.conv2d(out)
     # out: [batch, 2, F, T]
-    # out_real = out[:, 0, :, :]
-    # out_imag = out[:, 1, :, :]
-    # out_angle = out_imag.atan2_(out_real)
-    # out[:, 0, :, :] = torch.cos(out_angle)
-    # out[:, 1, :, :] = torch.sin_(out_angle)
-
     out_real = out[:, :1, :, :]
     out_imag = out[:, 1:, :, :]
-    out_angle = out_imag.atan2(out_real)
-    out_real_n = torch.cos(out_angle)
-    out_imag_n = torch.sin(out_angle)
-    normed_stft = torch.cat([out_real_n, out_imag_n], dim=1)
-    return normed_stft, out_angle
+    out_angle = out_imag.atan2(out_real) # [N, 1, F, T]
+    if PARAM.stft_norm_method == "atan2":
+      normed_stft = torch.cat([torch.cos(out_angle),
+                               torch.sin(out_angle)], dim=1)
+    elif PARAM.stft_norm_method == "div":
+      normed_stft = torch.div(
+          out, torch.sqrt(out_real**2+out_imag**2)+PARAM.stft_div_norm_eps)
+    else:
+      raise NotImplementedError
+    return normed_stft, out_angle.squeeze(1)
 
 
 class WavFeatures(
@@ -334,8 +335,8 @@ class NetPHASEN(nn.Module):
     Args:
       mixed_wav_features
     Return :
-      mag_batch[batch, time, fre]->real,
-      normalized_complex_phase[batch, time, fre, 2]->(real, imag)
+      mag_batch[N, F, T]->real,
+      normalized_complex_phase[N, 2, F, T]->(real, imag)
     '''
     sA_inputs = {
       "stft":mixed_wav_features.stft_batch, # [N, 2, F, T]
@@ -446,8 +447,15 @@ class PHASEN(nn.Module):
     mixed_stft_imag = mixed_stft_batch[:, 1, :, :] # [N, F, T]
     mixed_mag_batch = torch.sqrt(mixed_stft_real**2+mixed_stft_imag**2) # [N, F, T]
     mixed_angle_batch = torch.atan2(mixed_stft_imag, mixed_stft_real) # [N, F, T]
-    mixed_normed_stft_batch = torch.cat([torch.cos(mixed_angle_batch).unsqueeze_(1),
-                                         torch.sin(mixed_angle_batch).unsqueeze_(1)], dim=1)
+    if PARAM.stft_norm_method == "atan2":
+      mixed_normed_stft_batch = torch.cat([torch.cos(mixed_angle_batch).unsqueeze_(1),
+                                          torch.sin(mixed_angle_batch).unsqueeze_(1)], dim=1)
+    elif PARAM.stft_norm_method == "div":
+      _N, _F, _T = mixed_mag_batch.size()
+      mixed_normed_stft_batch = torch.div(
+          mixed_stft_batch, mixed_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+    else:
+      raise NotImplementedError
     self.mixed_wav_features = WavFeatures(wav_batch=mixed_wav_batch,
                                           stft_batch=mixed_stft_batch,
                                           mag_batch=mixed_mag_batch,
@@ -484,8 +492,15 @@ class PHASEN(nn.Module):
     clean_stft_imag = self.clean_stft_batch[:, 1, :, :] # [N, F, T]
     self.clean_mag_batch = torch.sqrt(clean_stft_real**2+clean_stft_imag**2) # [N, F, T]
     self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
-    self.clean_normed_stft_batch = torch.cat([torch.cos(self.clean_angle_batch).unsqueeze_(1),
-                                              torch.sin(self.clean_angle_batch).unsqueeze_(1)], dim=1)
+    if PARAM.stft_norm_method == "atan2":
+      self.clean_normed_stft_batch = torch.cat([torch.cos(self.clean_angle_batch).unsqueeze_(1),
+                                                torch.sin(self.clean_angle_batch).unsqueeze_(1)], dim=1)
+    elif PARAM.stft_norm_method == "div":
+      _N, _F, _T = self.clean_mag_batch.size()
+      self.clean_normed_stft_batch = torch.div(
+          self.clean_stft_batch, self.clean_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+    else:
+      raise NotImplementedError
 
     est_clean_mag_batch = est_wav_features.mag_batch
     est_clean_stft_batch = est_wav_features.stft_batch
