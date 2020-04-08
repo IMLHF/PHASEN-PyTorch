@@ -59,7 +59,7 @@ def audio_test():
         saved = p.setverbose(True)
         p.test( song_title)
 #         saved = p.setverbose(True)
-        p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose = True)
+        p.plt.signal_to_file(np.stack(stereo), song_title, override_verbose=True)
         p.logprint('elapsed time = {:8.2f} seconds\n'.format(time.clock()- etime))
         p.setverbose(saved)
 
@@ -80,7 +80,8 @@ def warble_test():
 
 scale_up = 1
 ############################  program start ###############################
-p = pghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
+p = pghi.PGHI(tol=1e-3, show_frames=100, time_scale=1/scale_up,
+              freq_scale=scale_up, show_plots=False, verbose=True)
 
 
 # gl = 2048
@@ -96,7 +97,8 @@ sweep_test()
 p.setverbose(False)
 audio_test()
 
-p = rtpghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale=scale_up, show_plots = False, verbose=True)
+p = rtpghi.PGHI(tol=1e-3, show_frames=100, time_scale=1/scale_up, freq_scale=scale_up,
+                show_plots=False, verbose=True)
 
 # warble_test()
 # pulse_test()
@@ -104,10 +106,3 @@ p = rtpghi.PGHI(tol = 1e-3, show_frames = 100, time_scale=1/scale_up, freq_scale
 # sweep_test()
 p.setverbose(False)
 audio_test()
-
-
-
-
-
-
-
