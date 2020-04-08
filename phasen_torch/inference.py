@@ -41,6 +41,7 @@ def enhance_one_wav(model: phasen.PHASEN, wav, phase_type=0):
       # print('noisy_phase', flush=True)
     elif phase_type == 2:
       enhanced_wav = est_features.wav_batch.cpu().numpy()[0]
+      wav_len = len(enhanced_wav)
       global phase_reconstructor
       if phase_reconstructor is None:
         phase_reconstructor = rtpghi.PGHI(redundancy=8, M=PARAM.fft_length,
@@ -48,6 +49,7 @@ def enhance_one_wav(model: phasen.PHASEN, wav, phase_type=0):
                                           verbose=False,
                                           Fs=PARAM.sampling_rate)
       rec_wav = phase_reconstructor.signal_to_signal(enhanced_wav)
-      enhanced_wav = rec_wav
+      enhanced_wav = rec_wav[:wav_len]
+      assert wav_len==len(enhanced_wav), 'wav length error.'
 
   return enhanced_wav
