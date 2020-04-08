@@ -17,7 +17,7 @@ from .FLAGS import PARAM
 
 test_processor = 1
 ckpt = None
-noisy_phase=False
+phase_type = False
 model = None
 
 def enhance_mini_process(noisy_dir, enhanced_save_dir):
@@ -25,7 +25,7 @@ def enhance_mini_process(noisy_dir, enhanced_save_dir):
   if model is None:
     model = build_model(ckpt_dir=ckpt)
   noisy_wav, sr = audio.read_audio(noisy_dir)
-  enhanced_wav = enhance_one_wav(model, noisy_wav, noisy_phase)
+  enhanced_wav = enhance_one_wav(model, noisy_wav, phase_type)
   noisy_name = Path(noisy_dir).stem
   audio.write_audio(os.path.join(enhanced_save_dir, noisy_name+'_enhanced.wav'),
                     enhanced_wav, PARAM.sampling_rate)
@@ -60,17 +60,17 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--n_process', default=1, type=int, help="n processor")
   parser.add_argument('--ckpt', default=None, type=str, help="ckpt dir")
-  parser.add_argument('--noisy_phase', default=0, type=int, help='if use noisy phase')
+  parser.add_argument('--phase', default=0, type=int, help='0: est, 1: noisy, 2: from mag')
   parser.add_argument('--mp', default=1, type=int, help='if measure preformance')
   args = parser.parse_args()
 
   test_processor = args.n_process
   ckpt = args.ckpt
-  noisy_phase = bool(args.noisy_phase)
+  phase_type = int(args.phase)
   if_measure_preformance = bool(args.mp)
 
   print('n_process:', args.n_process)
-  print("noisy_phase:", noisy_phase)
+  print("phase_type:", {0:'estimate', 1:'noisy', 2:'from mag'}[phase_type])
   print('ckpt:', args.ckpt)
   print('measure_preformance:', if_measure_preformance)
 
@@ -99,6 +99,6 @@ if __name__ == "__main__":
 
   """
   run cmd:
-  `OMP_NUM_THREADS=1 python -m xx._3_enhance_testsets --n_process=2 --noisy_phase=False`
+  `OMP_NUM_THREADS=1 python -m xx._3_enhance_testsets --n_process=2 --phase=0`
   [csig,cbak,cvol,pesq,snr,ssnr]=evaluate_all('/home/lhf/worklhf/PHASEN/noisy_datasets_16k/clean_testset_wav','/home/lhf/worklhf/PHASEN/exp/se_reMagMSE_cnn/enhanced_testsets/noisy_testset_wav')
   """

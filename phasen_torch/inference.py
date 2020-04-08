@@ -4,7 +4,10 @@ import numpy as np
 
 from .models import phasen
 from .utils import misc_utils
+from .utils.phase_reconstruction import rtpghi
 from .FLAGS import PARAM
+
+phase_reconstructor = None
 
 
 def build_model(ckpt_dir=None):
@@ -20,17 +23,31 @@ def build_model(ckpt_dir=None):
   return phasen_model
 
 
-def enhance_one_wav(model: phasen.PHASEN, wav, use_noisy_phase=False):
+def enhance_one_wav(model: phasen.PHASEN, wav, phase_type=0):
+  '''
+  phase_tyoe: [0: est, 1: nisy, 2: form mag]
+  '''
   wav_batch = torch.from_numpy(np.array([wav], dtype=np.float32))
   len_wav = len(wav)
   with torch.no_grad():
     est_features = model(wav_batch)
-    if not use_noisy_phase:
+    if phase_type == 0:
       enhanced_wav = est_features.wav_batch.cpu().numpy()[0]
-    else:
+    elif phase_type == 1:
       enhanced_mag = est_features.mag_batch.unsqueeze(1) # [B, 1, F, T]
       noisy_phase = model.mixed_wav_features.normed_stft_batch # [B, 2, F, T]
       enhanced_stft = enhanced_mag * noisy_phase
       enhanced_wav = model._istft_fn(enhanced_stft).cpu().numpy()[0][:len_wav]
       # print('noisy_phase', flush=True)
+    elif phase_type == 2:
+      enhanced_wav = est_features.wav_batch.cpu().numpy()[0]
+      global phase_reconstructor
+      if phase_reconstructor is None:
+        phase_reconstructor = rtpghi.PGHI(redundancy=8, M=PARAM.fft_length,
+                                          # gl=PARAM.frame_length,
+                                          verbose=False,
+                                          Fs=PARAM.sampling_rate)
+      rec_wav = phase_reconstructor.signal_to_signal(enhanced_wav)
+      enhanced_wav = rec_wav
+
   return enhanced_wav
