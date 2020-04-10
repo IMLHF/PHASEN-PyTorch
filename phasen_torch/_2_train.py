@@ -163,6 +163,7 @@ class TestOutputs(
   pass
 
 def test_one_epoch(test_model):
+  test_model.eval()
   t1 = time.time()
   testset_name = PARAM.test_noisy_sets[0]
   testset_dir = misc_utils.datasets_dir().joinpath(testset_name)
@@ -183,7 +184,7 @@ def test_one_epoch(test_model):
       noisy_inputs = noisy_inputs.to(test_model.device)
       est_features = test_model(noisy_inputs)
       noisy_name = Path(noisy_path).stem
-      est_wav = est_features.wav_batch.cpu().numpy()
+      est_wav = est_features.wav_batch.cpu().numpy()[0]
     audio.write_audio(os.path.join(enhanced_save_dir, noisy_name+'_enhanced.wav'),
                       est_wav, PARAM.sampling_rate)
   print("\r                                                               \r", end="", flush=True)
