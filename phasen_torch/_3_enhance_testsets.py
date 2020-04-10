@@ -95,7 +95,7 @@ if __name__ == "__main__":
     print('time: %.3f' % (t2-t1))
     print('ref=', ref_dir)
     print('deg=', deg_dir)
-    print('csig:%6.4f cbak:%6.4f covl:%6.4f pesq:%6.4f ssnr:%6.4f'% tuple(pm))
+    print('csig:%6.4f cbak:%6.4f covl:%6.4f pesq:%6.4f ssnr:%6.4f' % tuple(pm))
 
   """
   run cmd:

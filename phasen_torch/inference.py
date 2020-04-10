@@ -4,7 +4,7 @@ import numpy as np
 
 from .models import phasen
 from .utils import misc_utils
-from .utils.phase_reconstruction import rtpghi
+from .utils.phase_reconstruction import pghi
 from .FLAGS import PARAM
 
 phase_reconstructor = None
@@ -44,11 +44,11 @@ def enhance_one_wav(model: phasen.PHASEN, wav, phase_type=0):
       wav_len = len(enhanced_wav)
       global phase_reconstructor
       if phase_reconstructor is None:
-        phase_reconstructor = rtpghi.PGHI(redundancy=8, M=PARAM.fft_length,
-                                          # gl=PARAM.frame_length,
-                                          verbose=False,
-                                          Fs=PARAM.sampling_rate)
-      rec_wav = phase_reconstructor.signal_to_signal(enhanced_wav)
+        phase_reconstructor = pghi.PGHI(redundancy=8, M=PARAM.fft_length,
+                                        # gl=PARAM.frame_length,
+                                        verbose=False,
+                                        Fs=PARAM.sampling_rate)
+      rec_wav = phase_reconstructor.signal_to_signal(enhanced_wav, use_raw_phase=True)
       enhanced_wav = rec_wav[:wav_len]
       assert wav_len==len(enhanced_wav), 'wav length error.'
 

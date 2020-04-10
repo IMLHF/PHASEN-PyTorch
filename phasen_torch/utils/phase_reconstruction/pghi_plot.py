@@ -287,7 +287,7 @@ class Pghi_Plot(object):
                 self.openfile = './pghi_plots/' + self.logfile
                 self.file = open(self.openfile, mode='w')
             print(txt, file=self.file, flush=True)
-        print(txt)
+        # print(txt)
 
     def get_song(self):
         '''

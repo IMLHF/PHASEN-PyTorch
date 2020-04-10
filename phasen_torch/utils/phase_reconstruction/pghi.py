@@ -147,7 +147,7 @@ class PGHI(object):
 
         return dt
 
-    def magnitude_to_phase_estimate(self, magnitude):
+    def magnitude_to_phase_estimate(self, magnitude, init_phase=None):
         ''' estimate the phase frames from the magnitude
         parameter:
             magnitude
@@ -189,7 +189,10 @@ class PGHI(object):
         # dphaseNE = tgrad + fgrad
         # dphaseSE = tgrad - fgrad
 
-        phase = np.random.random_sample(magnitude.shape)*2*np.pi
+        if init_phase is None:
+          phase = np.random.random_sample(magnitude.shape)*2*np.pi
+        else:
+          phase = init_phase
 
         # #add known phase borders to the heap
         # for n in rangen:
@@ -370,7 +373,7 @@ class PGHI(object):
     def signal_to_magphase_frames(self, s):
         return self.complex_to_magphase(self.signal_to_frames(s))
 
-    def signal_to_signal(self,signal_in):
+    def signal_to_signal(self,signal_in, use_raw_phase=False):
         '''
           convert signal_in to frames
             throw away the phase
@@ -386,8 +389,9 @@ class PGHI(object):
         self.plt.signal_to_file(signal_in, 'signal_in_before_stretch')
         self.plt.spectrogram(signal_in,'spectrogram signal_in_before_stretch in')
         s= self.sigstretch(signal_in)
-        magnitude_frames, _ = self.signal_to_magphase_frames(s)
-        phase_estimated_frames = self.magnitude_to_phase_estimate(magnitude_frames)
+        magnitude_frames, raw_phase = self.signal_to_magphase_frames(s)
+        phase_estimated_frames = self.magnitude_to_phase_estimate(
+            magnitude_frames, init_phase=(raw_phase if use_raw_phase else None))
 
         signal_out = self.magphase_frames_to_signal(magnitude_frames, phase_estimated_frames)
         self.plt.plot_waveforms('Signal in, Signal out', [signal_in, signal_out])
