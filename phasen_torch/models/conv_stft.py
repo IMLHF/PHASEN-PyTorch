@@ -104,7 +104,7 @@ class ConviSTFT(nn.Module):
     else:
       assert inputs.dim()==4, 'inputs dim error'
       shape = inputs.size() #[N, 2, F, T]
-      inputs = inputs.view([shape[0], shape[1]*shape[2], shape[3]])
+      inputs = inputs.reshape([shape[0], shape[1]*shape[2], shape[3]])
     outputs = F.conv_transpose1d(inputs, self.weight, stride=self.stride)
 
     # this is from torch-stft: https://github.com/pseeth/torch-stft

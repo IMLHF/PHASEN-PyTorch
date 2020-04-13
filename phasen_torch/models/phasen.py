@@ -182,6 +182,12 @@ class TwoStreamBlock(nn.Module):
     self.sA6_info_communicate = InfoCommunicate(
         channel_in_out_P, channel_in_out_A)
 
+    # self.reshape_in = NodeReshape([-1, frequency_dim*channel_in_out_A])
+    # assert not channel_in_out_A & 1, 'channel_in_out_A must be even'
+    # self.blstm = nn.LSTM(frequency_dim*channel_in_out_A, frequency_dim*(channel_in_out_A//2),
+    #                      batch_first=True, bidirectional=True)
+    # self.reshape_out = NodeReshape([-1, frequency_dim, channel_in_out_A])
+
     # [batch, C, F, T] -> [batch, T, F, C]
     self.sP1_conv2d_before_LN = nn.LayerNorm([frequency_dim, channel_in_out_P])
     # [batch, T, F, C] -> [batch, C, F, T]
@@ -200,6 +206,7 @@ class TwoStreamBlock(nn.Module):
 
   def forward(self, feature_sA, feature_sP):
     # Stream A
+    # feature_sA: [N, C, F, T]
     sA_out = feature_sA
     sA_out = self.sA1_pre_FTB(sA_out)
     sA_out = self.sA2_conv2d(sA_out)
@@ -209,6 +216,12 @@ class TwoStreamBlock(nn.Module):
     sA_out = self.sA4_conv2d(sA_out)
     sA_out = self.sA4_conv2d_bna(sA_out)
     sA_out = self.sA5_post_FTB(sA_out)
+
+    # sA_out = torch.transpose(feature_sA, 1, 3) #[N, T, F, C]
+    # sA_out = self.reshape_in(sA_out)
+    # sA_out = self.blstm(sA_out)[0] # [N, T, F*C]
+    # sA_out = self.reshape_out(sA_out) #[ N, T, F, C]
+    # sA_out = torch.transpose(sA_out, 1, 3)
 
     # Strean P
     sP_out = feature_sP
@@ -468,8 +481,11 @@ class PHASEN(nn.Module):
 
     # print(self.mixed_wav_features.mag_batch.size(), net_phasen_out.mag_mask.size())
     est_clean_angle_batch = net_phasen_out.angle
-    est_clean_mag_batch = torch.mul(
-        self.mixed_wav_features.mag_batch, net_phasen_out.mag_mask)  # [batch, F, T]
+    if PARAM.out_mag_mask:
+      est_clean_mag_batch = torch.mul(
+          self.mixed_wav_features.mag_batch, net_phasen_out.mag_mask)  # [batch, F, T]
+    else:
+      est_clean_mag_batch = net_phasen_out.mag_mask
     mag_shape = est_clean_mag_batch.size()
     est_normed_stft_batch = net_phasen_out.normalized_complex_phase # [bathch, 2, F, T]
     est_clean_stft_batch = torch.mul(
