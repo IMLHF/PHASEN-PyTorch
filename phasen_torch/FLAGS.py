@@ -89,6 +89,8 @@ class BaseConfig(StaticKey):
   stft_div_norm_eps = 1e-5 # for stft_norm_method=div
 
   clip_grads = False
+  net_out_type = 'mask'
+  sA_out_act = "sigmoid"
 
 
 class p40(BaseConfig):
@@ -112,152 +114,7 @@ class test001(p40): # done v100
   n_TSB = 3
 
 
-class se_phasen_001(p40): # done v100
-  '''
-  phasen 001
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-
-
-class se_phasen_002(p40): # done v100
-  '''
-  phasen 002
-  loss_mag_reMse|0050 + loss_CosSim
-  '''
-  sum_losses = ["loss_mag_reMse", "loss_CosSim"]
-  sum_losses_w = []
-  show_losses = ["loss_mag_reMse", "loss_CosSim", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_mag_reMse", "loss_CosSim",]
-  stop_criterion_losses_w = []
-  relative_loss_epsilon = 0.05
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-
-
-class se_phasen_003(p40): # done v100
-  '''
-  phasen 003
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "mag"
-
-
-class se_phasen_004(p40): # done v100
-  '''
-  phasen 004
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "mag"
-  stream_P_feature_type = "normed_stft"
-
-class se_phasen_005(p40): # done v100
-  '''
-  phasen 005
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "stft"
-  stream_P_feature_type = "normed_stft"
-
-#  fix bug blstm inputs error then continue
-
-class se_phasen_fix005(p40): # done v100
-  '''
-  phasen fix005
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "stft"
-  stream_P_feature_type = "normed_stft"
-
-class se_phasen_007(p40): # done v100
-  '''
-  phasen 007
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "stft"
-  stream_P_feature_type = "normed_stft"
-  stft_norm_method = "div"
-  stft_div_norm_eps = 1e-6
-
-class se_phasen_008(p40): # done v100
-  '''
-  phasen 008
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-  channel_A = 96
-  channel_P = 48
-  n_TSB = 3
-  stream_A_feature_type = "stft"
-  stream_P_feature_type = "normed_stft"
-  stft_norm_method = "div"
-  stft_div_norm_eps = 1e-5
-
-class se_phasen_009(p40): # running v100
+class se_phasen_009(p40): # done v100
   '''
   phasen 009
   loss_compressedMag_mse + loss_compressedStft_mse
@@ -275,9 +132,151 @@ class se_phasen_009(p40): # running v100
   stream_A_feature_type = "stft"
   stream_P_feature_type = "normed_stft"
   stft_norm_method = "div"
-  stft_div_norm_eps = 1e-8
+  stft_div_norm_eps = 1e-7
+  # test_noisy_sets = ['noisy_trainset_wav']
+  # test_clean_sets = ['clean_trainset_wav']
+
+class se_phasen_0092(p40): # running v100
+  '''
+  phasen 0092
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
+
+  train_noisy_set = 'noisy_trainset_wav_phasen009_en'
+  train_clean_set = 'clean_trainset_wav'
+  validation_noisy_set = 'noisy_testset_wav_phasen009_en'
+  validation_clean_set = 'clean_testset_wav'
+  test_noisy_sets = ['noisy_testset_wav_phasen009_en']
+  test_clean_sets = ['clean_testset_wav']
+
+class se_phasen_0093(p40): # running v100
+  '''
+  phasen 0092
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
+
+  train_noisy_set = 'noisy_trainset_wav_phasen009_en'
+  train_clean_set = 'clean_trainset_wav'
+  validation_noisy_set = 'noisy_testset_wav_phasen009_en'
+  validation_clean_set = 'clean_testset_wav'
+  test_noisy_sets = ['noisy_testset_wav_phasen009_en']
+  test_clean_sets = ['clean_testset_wav']
+  net_out_type = 'magres'
+  sA_out_act = 'None'
+
+class se_phasen_010(p40): # done v100
+  '''
+  phasen 010
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
 
 
-PARAM = se_phasen_009 ###
+class se_phasen_011(p40): # done v100
+  '''
+  phasen 011
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "mag"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
 
-# CUDA_VISIBLE_DEVICES=6 OMP_NUM_THREADS=4 python -m se_phasen_009._2_train
+class se_phasen_012(p40): # running v100
+  '''
+  phasen 012
+  loss_compressedMag_mse + loss_compressedStft_mse
+  replace StreamA of TSB with BLSTM*1 ->worse
+  remove 5*5 conv in streamA of TSB ->worse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
+
+class se_phasen_013(p40): # running v100
+  '''
+  phasen 013
+  loss_compressedMag_mse + loss_compressedStft_mse
+  '''
+  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses_w = []
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
+                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses_w = []
+  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  stop_criterion_losses_w = []
+  channel_A = 96
+  channel_P = 48
+  n_TSB = 3
+  stream_A_feature_type = "stft"
+  stream_P_feature_type = "normed_stft"
+  stft_norm_method = "div"
+  stft_div_norm_eps = 1e-7
+  batch_size = 6
+
+
+PARAM = se_phasen_0093 ###
+
+# CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=4 python -m se_phasen_0093._2_train

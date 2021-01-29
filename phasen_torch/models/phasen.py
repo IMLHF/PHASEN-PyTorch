@@ -256,7 +256,14 @@ class StreamAmplitude_PostNet(nn.Module):
 
     self.p3_dense = nn.Sequential(nn.Linear(uni_rnn_units * 2, 600), nn.ReLU(inplace=True))
     self.p4_dense = nn.Sequential(nn.Linear(600, 600), nn.ReLU(inplace=True))
-    self.out_dense = nn.Sequential(nn.Linear(600, frequency_dim), nn.Sigmoid())
+    sA_out_act = {
+      'sigmoid':nn.Sigmoid(),
+      'tanh':nn.Tanh(),
+      'None':None,
+    }[PARAM.sA_out_act]
+    self.out_dense = nn.Linear(600, frequency_dim)
+    if sA_out_act is not None:
+      self.out_dense = nn.Sequential(self.out_dense, sA_out_act)
 
   def forward(self, feature_sA):
     '''
@@ -481,11 +488,14 @@ class PHASEN(nn.Module):
 
     # print(self.mixed_wav_features.mag_batch.size(), net_phasen_out.mag_mask.size())
     est_clean_angle_batch = net_phasen_out.angle
-    if PARAM.out_mag_mask:
+    if PARAM.net_out_type == 'mask':
       est_clean_mag_batch = torch.mul(
           self.mixed_wav_features.mag_batch, net_phasen_out.mag_mask)  # [batch, F, T]
-    else:
+    elif PARAM.net_out_type == 'mag':
       est_clean_mag_batch = net_phasen_out.mag_mask
+    elif PARAM.net_out_type == 'magres':
+      est_clean_mag_batch = torch.abs(torch.add(
+          self.mixed_wav_features.mag_batch, net_phasen_out.mag_mask))
     mag_shape = est_clean_mag_batch.size()
     est_normed_stft_batch = net_phasen_out.normalized_complex_phase # [bathch, 2, F, T]
     est_clean_stft_batch = torch.mul(
