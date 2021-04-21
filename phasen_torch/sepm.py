@@ -13,8 +13,8 @@ import numpy as np
 #  YOU NEED TO INSTALL THESE PACKAGES FIRST
 #
 #  pip3 install Cython
-#  pip3 install https://github.com/schmiph2/python-pesq/archive/master.zip
-#  pip3 install https://github.com/schmiph2/pystoi/archive/master.zip
+#  pip3 install https://github.com/ludlows/python-pesq/archive/refs/heads/dev.zip
+#  pip3 install pystoi
 #
 
 def extractOverlappedWindows(x,nperseg,noverlap,window=None):
