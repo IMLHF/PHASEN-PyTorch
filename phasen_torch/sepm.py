@@ -1,6 +1,7 @@
 from scipy.signal import stft,get_window,correlate,resample
 from scipy.linalg import solve_toeplitz,toeplitz
-from pypesq import pypesq # https://github.com/ludlows/python-pesq
+from pesq import pesq as pesq_inner # pip install https://github.com/ludlows/python-pesq/archive/refs/heads/dev.zip
+from pesq import PesqError
 from pystoi.stoi import stoi # https://github.com/mpariente/pystoi
 import numpy as np
 #################################################
@@ -140,21 +141,59 @@ def fwSNRseg(cleanSig, enhancedSig, fs, frameLen=0.03, overlap=0.75):
     return np.mean(distortion)
 
 
+# def lpcoeff(speech_frame, model_order):
+#    # ----------------------------------------------------------
+#    # (1) Compute Autocorrelation Lags
+#    # ----------------------------------------------------------
+
+#     R=correlate(speech_frame,speech_frame)
+#     R=R[len(speech_frame)-1:len(speech_frame)+model_order]
+#    # ----------------------------------------------------------
+#    # (2) Levinson-Durbin
+#    # ----------------------------------------------------------
+#     lpparams=np.ones((model_order+1))
+#     lpparams[1:]=solve_toeplitz(R[0:-1],-R[1:])
+#     return(lpparams,R)
+
+
 def lpcoeff(speech_frame, model_order):
-   # ----------------------------------------------------------
-   # (1) Compute Autocorrelation Lags
-   # ----------------------------------------------------------
+    # (1) Compute Autocor lags
+    winlength = speech_frame.shape[0]
+    R = []
+    for k in range(model_order + 1):
+        first = speech_frame[:(winlength - k)]
+        second = speech_frame[k:winlength]
+        R.append(np.sum(first * second))
 
-    R=correlate(speech_frame,speech_frame)
-    R=R[len(speech_frame)-1:len(speech_frame)+model_order]
-   # ----------------------------------------------------------
-   # (2) Levinson-Durbin
-   # ----------------------------------------------------------
-    lpparams=np.ones((model_order+1))
-    lpparams[1:]=solve_toeplitz(R[0:-1],-R[1:])
+    # (2) Lev-Durbin
+    a = np.ones((model_order,))
+    E = np.zeros((model_order + 1,))
+    rcoeff = np.zeros((model_order,))
+    E[0] = R[0]
+    for i in range(model_order):
+        if i == 0:
+            sum_term = 0
+        else:
+            a_past = a[:i]
+            sum_term = np.sum(a_past * np.array(R[i:0:-1]))
+        # rcoeff[i] = (R[i+1] - sum_term)/E[i] # fixed by LiHongfeng
+        rcoeff[i] = (R[i+1] - sum_term)/max(E[i], eps)
+        # if E[i] == 0:
+        #   print(233333, i, eps==0)
+        a[i] = rcoeff[i]
+        if i > 0:
+            a[:i] = a_past[:i] - rcoeff[i] * a_past[::-1]
+        E[i+1] = (1-rcoeff[i]*rcoeff[i])*E[i]
+    acorr = np.array(R, dtype=np.float32)
+    refcoeff = np.array(rcoeff, dtype=np.float32)
+    a = a * -1
+    lpparams = np.array([1] + list(a), dtype=np.float32)
+    acorr =np.array(acorr, dtype=np.float32)
+    refcoeff = np.array(refcoeff, dtype=np.float32)
+    lpparams = np.array(lpparams, dtype=np.float32)
 
-
-    return(lpparams,R)
+    # return acorr, refcoeff, lpparams
+    return lpparams, acorr
 
 def llr(clean_speech, processed_speech, fs, frameLen=0.03, overlap=0.75):
     eps = np.finfo(np.float64).eps
@@ -326,19 +365,24 @@ def wss(clean_speech, processed_speech, fs, frameLen=0.03, overlap=0.75):
     return np.mean(distortion)
 
 def pesq(clean_speech, processed_speech, fs):
-    if fs == 8000:
-        pesq_mos = pypesq(fs,clean_speech, processed_speech, 'nb')
-        pesq_mos = 46607/14945 - (2000*np.log(1/(pesq_mos/4 - 999/4000) - 1))/2989 #remap to raw pesq score
+    try:
+        if fs == 8000:
+            pesq_mos = pesq_inner(fs,clean_speech, processed_speech, 'nb')
+            pesq_mos = 46607/14945 - (2000*np.log(1/(pesq_mos/4 - 999/4000) - 1))/2989 #remap to raw pesq score
 
-    elif fs == 16000:
-        pesq_mos = pypesq(fs,clean_speech, processed_speech, 'wb')
-    elif fs >= 16000:
-        numSamples=round(len(clean_speech)/fs*16000)
-        pesq_mos = pypesq(fs,resample(clean_speech, numSamples), resample(processed_speech, numSamples), 'wb')
-    else:
-        numSamples=round(len(clean_speech)/fs*8000)
-        pesq_mos = pypesq(fs,resample(clean_speech, numSamples), resample(processed_speech, numSamples), 'nb')
-        pesq_mos = 46607/14945 - (2000*np.log(1/(pesq_mos/4 - 999/4000) - 1))/2989 #remap to raw pesq score
+        elif fs == 16000:
+            pesq_mos = pesq_inner(fs,clean_speech, processed_speech, 'wb')
+        elif fs >= 16000:
+            numSamples=round(len(clean_speech)/fs*16000)
+            pesq_mos = pesq_inner(fs,resample(clean_speech, numSamples),
+                                resample(processed_speech, numSamples), 'wb')
+        else:
+            numSamples=round(len(clean_speech)/fs*8000)
+            pesq_mos = pesq_inner(fs,resample(clean_speech, numSamples),
+                                resample(processed_speech, numSamples), 'nb')
+            pesq_mos = 46607/14945 - (2000*np.log(1/(pesq_mos/4 - 999/4000) - 1))/2989 #remap to raw pesq score
+    except PesqError:
+        return 0.0
 
     return pesq_mos
 
