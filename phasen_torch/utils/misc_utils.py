@@ -1,7 +1,7 @@
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 import sys
-import tensorflow.contrib.slim as slim
+# import tensorflow.contrib.slim as slim
 import time
 from distutils import version
 from pathlib import Path
@@ -75,14 +75,14 @@ def warmup_coef(global_step, warmup_steps=4000.):
   return warmup_steps ** 0.5 * min(step * warmup_steps ** -1.5, step ** -0.5)
 
 
-def show_variables(vars_):
-  slim.model_analyzer.analyze_vars(vars_, print_info=True)
-  sys.stdout.flush()
+# def show_variables(vars_):
+#   slim.model_analyzer.analyze_vars(vars_, print_info=True)
+#   sys.stdout.flush()
 
 
-def show_all_variables():
-  model_vars = tf.trainable_variables()
-  show_variables(model_vars)
+# def show_all_variables():
+#   model_vars = tf.trainable_variables()
+#   show_variables(model_vars)
 
 
 def print_log(msg, log_file=None, no_time=False, no_prt=False):
@@ -98,12 +98,12 @@ def print_log(msg, log_file=None, no_time=False, no_prt=False):
         f.write(msg)
 
 
-def check_tensorflow_version():
-  # LINT.IfChange
-  min_tf_version = PARAM.min_TF_version
-  # LINT.ThenChange(<pwd>/nmt/copy.bara.sky)
-  if not (version.LooseVersion(tf.__version__) == version.LooseVersion(min_tf_version)):
-    raise EnvironmentError("Tensorflow version must be '%s'" % min_tf_version)
+# def check_tensorflow_version():
+#   # LINT.IfChange
+#   min_tf_version = PARAM.min_TF_version
+#   # LINT.ThenChange(<pwd>/nmt/copy.bara.sky)
+#   if not (version.LooseVersion(tf.__version__) == version.LooseVersion(min_tf_version)):
+#     raise EnvironmentError("Tensorflow version must be '%s'" % min_tf_version)
 
 
 def check_torch_version():

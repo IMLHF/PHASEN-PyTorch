@@ -681,3 +681,23 @@ class PHASEN(nn.Module):
   @property
   def optimizer_lr(self):
     return self._optimizer.param_groups[0]['lr']
+
+
+if __name__ == "__main__":
+    # calculate MACCs (multiply-accumulation ops) and Parameters
+    from thop import profile
+    device = 'cpu'
+    test_model = NetPHASEN()
+    # wav_batch = torch.rand(1, PARAM.sampling_rate).to(device)
+    # emb_batch = torch.rand(1, PARAM.speaker_emb_size).to(device)
+    wav_feature_in = WavFeatures(wav_batch=torch.rand(1, PARAM.sampling_rate//10).to(device),
+                                 stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),  # [N, 2, F, T]
+                                 mag_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),
+                                 angle_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),
+                                 normed_stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device))
+    macs, params = profile(test_model, inputs=(wav_feature_in,))
+    print("Config class name: %s\n"%PARAM().config_name())
+    # print("model name: %s\n"%PARAM.model_type)
+    print("MACCs of processing 1s wav = %.2fM\n"%(macs/1e6))
+    print("params = %.2fM\n\n\n"%(params/1e6))
+    # del tmp_model
