@@ -23,7 +23,7 @@ class SelfConv2d(nn.Module):
           padding_nn.append(kernel_s // 2)
     self.conv2d_fn = nn.Conv2d(in_channels, out_channels, kernel_size,
                                stride=stride, bias=use_bias, padding=padding_nn)
-    self.act = activation
+    self.act = None if activation is None else activation()
 
   def forward(self, feature_in):
     """
@@ -37,10 +37,10 @@ class SelfConv2d(nn.Module):
 
 
 class BatchNormAndActivate(nn.Module):
-  def __init__(self, channel, activation=nn.ReLU(inplace=True)):
+  def __init__(self, channel, activation=nn.ReLU):
     super(BatchNormAndActivate, self).__init__()
     self.bn_layer = nn.BatchNorm2d(channel)
-    self.activate_fn = activation
+    self.activate_fn = None if activation is None else activation()
 
   def forward(self, fea_in):
     """
@@ -145,11 +145,11 @@ class FrequencyTransformationBlock(nn.Module):
 
 
 class InfoCommunicate(nn.Module):
-  def __init__(self, channel_in, channel_out, activate_fn=nn.Tanh()):
+  def __init__(self, channel_in, channel_out, activate_fn=nn.Tanh):
     super(InfoCommunicate, self).__init__()
     self.conv2d = SelfConv2d(
         channel_in, channel_out, [1, 1], padding="same")
-    self.activate_fn = activate_fn
+    self.activate_fn = None if activate_fn is None else activate_fn()
 
   def forward(self, feature_x1, feature_x2):
     # feature_x1: [batch, channel_out, F, T]
@@ -246,7 +246,7 @@ class StreamAmplitude_PostNet(nn.Module):
   def __init__(self, frequency_dim, channel_sA):
     super(StreamAmplitude_PostNet, self).__init__()
     self.p1_conv2d = SelfConv2d(channel_sA, 8, [1, 1],
-                                activation=nn.Sigmoid(),
+                                activation=nn.Sigmoid,
                                 padding="same") #[N, 8, F, T]
 
     uni_rnn_units = 600
@@ -338,7 +338,7 @@ class NetPHASEN(nn.Module):
     }[PARAM.stream_P_feature_type]
     self.streamA_prenet = Stream_PreNet(
         sA_in_channel, PARAM.channel_A, kernels=PARAM.prenet_A_kernels,
-        conv2d_bn=True, conv2d_activation=nn.ReLU(inplace=True))
+        conv2d_bn=True, conv2d_activation=nn.ReLU)
     self.streamP_prenet = Stream_PreNet(
         sP_in_channel, PARAM.channel_P, PARAM.prenet_P_kernels)
     self.layers_TSB = nn.ModuleList()
