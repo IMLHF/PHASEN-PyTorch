@@ -10,9 +10,43 @@ from ..models import conv_stft
 from .dpt_blocks.new_model import Net as DPT_FSNET
 
 
+class TorchSTFT(nn.Module):
+  def __init__(self, frame_length, frame_step, fft_length):
+    super(TorchSTFT, self).__init__()
+    self.window = nn.Parameter(torch.hann_window(frame_length, False), requires_grad=False)
+    self.frame_length = frame_length
+    self.frame_step = frame_step
+    self.fft_length = fft_length
+
+  def __call__(self, x):
+    '''
+    x: [..., L]
+    return: [..., 2, F, T]
+    '''
+    return torch.stft(x, self.fft_length,
+                      self.frame_step, self.frame_length,
+                      self.window).permute(0, 3, 1, 2).contiguous()
+
+
+class TorchiSTFT(nn.Module):
+  def __init__(self, frame_length, frame_step, fft_length):
+    super(TorchiSTFT, self).__init__()
+    self.window = nn.Parameter(torch.hann_window(frame_length, False), requires_grad=False)
+    self.frame_length = frame_length
+    self.frame_step = frame_step
+    self.fft_length = fft_length
+
+  def __call__(self, x, L):
+    '''
+    x: [..., 2, F, T]
+    return: [..., L]
+    '''
+    return torch.istft(x.permute(0, 2, 3, 1), self.fft_length, self.frame_step, self.frame_length, self.window, length=L)
+
+
 class Losses(
     collections.namedtuple("Losses",
-                           ("sum_loss", "show_losses", "stop_criterion_loss"))):
+                           ("sum_loss", "show_losses"))):
   pass
 
 
@@ -33,8 +67,10 @@ class Net(nn.Module):
     self.mode = mode
     self.device = device
     self._net_model = DPT_FSNET(PARAM.frequency_dim, PARAM.dpt_fsnet_width)
-    self._stft_fn = conv_stft.ConvSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, 2, F, T]
-    self._istft_fn = conv_stft.ConviSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, L]
+    # self._stft_fn = conv_stft.ConvSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, 2, F, T]
+    # self._istft_fn = conv_stft.ConviSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, L]
+    self._stft_fn = TorchSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
+    self._istft_fn = TorchiSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
 
     if mode == PARAM.MODEL_VALIDATE_KEY or mode == PARAM.MODEL_INFER_KEY:
       # self.eval(True)
@@ -94,7 +130,7 @@ class Net(nn.Module):
 
     if has_nan_inf == 0:
       self._optimizer.step()
-      self._lr_scheduler.step(self._global_step)
+      self._lr_scheduler.step()
       self._global_step += 1
       return
     self._nan_grads_batch += 1
@@ -102,40 +138,39 @@ class Net(nn.Module):
   def forward(self, mixed_wav_batch):
     mixed_wav_batch = mixed_wav_batch.to(self.device)
     mixed_stft_batch = self._stft_fn(mixed_wav_batch) # [N, 2, F, T]
-    mixed_stft_real = mixed_stft_batch[:, 0, :, :] # [N, F, T]
-    mixed_stft_imag = mixed_stft_batch[:, 1, :, :] # [N, F, T]
-    mixed_mag_batch = torch.sqrt(mixed_stft_real**2+mixed_stft_imag**2) # [N, F, T]
-    mixed_angle_batch = torch.atan2(mixed_stft_imag, mixed_stft_real) # [N, F, T]
-    _N, _F, _T = mixed_mag_batch.size()
-    mixed_normed_stft_batch = torch.div(
-        mixed_stft_batch, mixed_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
-    self.mixed_wav_features = WavFeatures(wav_batch=mixed_wav_batch,
-                                          stft_batch=mixed_stft_batch,
-                                          mag_batch=mixed_mag_batch,
-                                          angle_batch=mixed_angle_batch,
-                                          normed_stft_batch=mixed_normed_stft_batch)
+    # mixed_stft_real = mixed_stft_batch[:, 0, :, :] # [N, F, T]
+    # mixed_stft_imag = mixed_stft_batch[:, 1, :, :] # [N, F, T]
+    # mixed_mag_batch = torch.sqrt(mixed_stft_real**2+mixed_stft_imag**2) # [N, F, T]
+    # mixed_angle_batch = torch.atan2(mixed_stft_imag, mixed_stft_real) # [N, F, T]
+    # _N, _F, _T = mixed_mag_batch.size()
+    # mixed_normed_stft_batch = torch.div(
+    #     mixed_stft_batch, mixed_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+    # self.mixed_wav_features = WavFeatures(wav_batch=mixed_wav_batch,
+    #                                       stft_batch=mixed_stft_batch,
+    #                                       mag_batch=mixed_mag_batch,
+    #                                       angle_batch=mixed_angle_batch,
+    #                                       normed_stft_batch=mixed_normed_stft_batch)
 
-    feature_in = self.mixed_wav_features.mixed_stft_batch # [N, 2, F, T]
+    # feature_in = self.mixed_wav_features.stft_batch # [N, 2, F, T]
 
-    est_stft_batch = self._net_model(feature_in) # [N, 2, F, T] -> [N, 2, F, T]
+    est_stft_batch = self._net_model(mixed_stft_batch) # [N, 2, F, T] -> [N, 2, F, T]
 
-    est_wav_batch = self._istft_fn(est_stft_batch)
-    _mixed_wav_length = self.mixed_wav_features.wav_batch.size()[-1]
-    est_wav_batch = est_wav_batch[:, :_mixed_wav_length]
+    _mixed_wav_length = mixed_wav_batch.size()[-1]
+    est_wav_batch = self._istft_fn(est_stft_batch, _mixed_wav_length)
 
     est_stft_real = est_stft_batch[:, 0, :, :] # [N, F, T]
     est_stft_imag = est_stft_batch[:, 1, :, :] # [N, F, T]
     est_mag_batch = torch.sqrt(est_stft_real**2+est_stft_imag**2) # [N, F, T]
-    est_angle_batch = torch.atan2(est_stft_imag, est_stft_real) # [N, F, T]
-    _N, _F, _T = est_mag_batch.size()
-    est_normed_stft_batch = torch.div(
-        est_stft_batch, est_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+    # est_angle_batch = torch.atan2(est_stft_imag, est_stft_real) # [N, F, T]
+    # _N, _F, _T = est_mag_batch.size()
+    # est_normed_stft_batch = torch.div(
+    #     est_stft_batch, est_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
 
     return WavFeatures(wav_batch=est_wav_batch,
                        stft_batch=est_stft_batch,
                        mag_batch=est_mag_batch,
-                       angle_batch=est_angle_batch,
-                       normed_stft_batch=est_normed_stft_batch)
+                       angle_batch=0,
+                       normed_stft_batch=0)
 
   def get_losses(self, est_wav_features:WavFeatures, clean_wav_batch):
     self.clean_wav_batch = clean_wav_batch.to(self.device)
@@ -156,7 +191,6 @@ class Net(nn.Module):
     all_losses = list()
     all_losses.extend(PARAM.sum_losses)
     all_losses.extend(PARAM.show_losses)
-    all_losses.extend(PARAM.stop_criterion_losses)
     all_losses = set(all_losses)
 
     self.loss_compressedMag_mse = 0
@@ -174,6 +208,7 @@ class Net(nn.Module):
     self.loss_wav_reL2 = 0
     self.loss_CosSim = 0
     self.loss_SquareCosSim = 0
+    self.loss_stftm = 0
 
     # region losses
     if "loss_compressedMag_mse" in all_losses:
@@ -208,6 +243,9 @@ class Net(nn.Module):
     if "loss_stft_reMae" in all_losses:
       self.loss_stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
                                                          PARAM.relative_loss_epsilon)
+
+    if "loss_stftm" in all_losses:
+      self.loss_stftm = losses.batchSum_stftmLoss(est_clean_stft_batch, self.clean_stft_batch,)
 
 
     if "loss_wav_L1" in all_losses:
@@ -245,6 +283,7 @@ class Net(nn.Module):
         'loss_wav_reL2': self.loss_wav_reL2,
         'loss_CosSim': self.loss_CosSim,
         'loss_SquareCosSim': self.loss_SquareCosSim,
+        'loss_stftm': self.loss_stftm,
         # 'loss_stCosSim': self.loss_stCosSim,
         # 'loss_stSquareCosSim': self.loss_stSquareCosSim,
     }
@@ -256,7 +295,7 @@ class Net(nn.Module):
     for i, name in enumerate(sum_loss_names):
       loss_t = loss_dict[name]
       if len(PARAM.sum_losses_w) > 0:
-        loss_t *= PARAM.sum_losses_w[i]
+        loss_t = loss_t * PARAM.sum_losses_w[i]
       sum_loss += loss_t
     # endregion sum_loss
 
@@ -266,24 +305,14 @@ class Net(nn.Module):
     for i, name in enumerate(show_loss_names):
       loss_t = loss_dict[name]
       if len(PARAM.show_losses_w) > 0:
-        loss_t *= PARAM.show_losses_w[i]
+        loss_t = loss_t * PARAM.show_losses_w[i]
       show_losses.append(loss_t)
     show_losses = torch.stack(show_losses)
     # endregion show_losses
 
-    # region stop_criterion_losses
-    stop_criterion_losses_sum = 0.0
-    stop_criterion_loss_names = PARAM.stop_criterion_losses
-    for i, name in enumerate(stop_criterion_loss_names):
-      loss_t = loss_dict[name]
-      if len(PARAM.stop_criterion_losses_w) > 0:
-        loss_t *= PARAM.stop_criterion_losses_w[i]
-      stop_criterion_losses_sum += loss_t
-    # endregion stop_criterion_losses
 
     return Losses(sum_loss=sum_loss,
-                  show_losses=show_losses,
-                  stop_criterion_loss=stop_criterion_losses_sum)
+                  show_losses=show_losses)
 
 
   @property
