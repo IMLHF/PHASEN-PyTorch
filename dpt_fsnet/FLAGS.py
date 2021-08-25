@@ -36,15 +36,14 @@ class BaseConfig(StaticKey):
   n_test_set_records = 824
 
   train_val_wav_seconds = 3.0
-
-  batch_size = 12
+  batch_size = 6
 
   relative_loss_epsilon = 0.1
   RL_idx = 2.0
   st_frame_length_for_loss = 512
   st_frame_step_for_loss = 256
   sampling_rate = 16000
-  frame_length = 400
+  frame_length = 512
   frame_step = 160
   fft_length = 512
   optimizer = "Adam" # "Adam" | "RMSProp"
@@ -70,10 +69,9 @@ class BaseConfig(StaticKey):
   """
   sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
   sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",]
+  #               "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
   show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
 
   dpt_fsnet_width = 64
   frequency_dim = 257
@@ -88,14 +86,13 @@ class se_dptfsnet_001(BaseConfig): # bss13003
   dpt_fsnet 001
   loss_compressedMag_mse + loss_compressedStft_mse
   '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                 "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
+  batch_size = 4
+  sum_losses = ["loss_stftm", "loss_wav_L2"]
+  sum_losses_w = [0.6/4, 0.4]
+  show_losses = ["loss_stftm", "loss_wav_L2"]
+  show_losses_w = [1.0/4, 1.0]
   stft_div_norm_eps = 1e-7
+  train_val_wav_seconds = 4.0
   # test_noisy_sets = ['noisy_trainset_wav']
   # test_clean_sets = ['clean_trainset_wav']
 
