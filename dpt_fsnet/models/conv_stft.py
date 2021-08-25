@@ -89,7 +89,7 @@ class ConviSTFT(nn.Module):
     self.register_buffer('window', window)
     self.register_buffer('enframe', torch.eye(win_len)[:,None,:])
 
-  def forward(self, inputs, phase=None):
+  def forward(self, inputs, L, phase=None):
     """
     inputs : [B, 2, F, T] (complex spec) or [B, F, T] (mags)
     phase: [B, F, T] (if not none)
@@ -97,7 +97,7 @@ class ConviSTFT(nn.Module):
 
     if phase is not None:
       assert inputs.dim()==3, 'inputs dim error.'
-      assert phase.dim()==3, 'pahse dim error'
+      assert phase.dim()==3, 'phase dim error'
       real = inputs*torch.cos(phase)
       imag = inputs*torch.sin(phase)
       inputs = torch.cat([real, imag], 1)
@@ -113,4 +113,6 @@ class ConviSTFT(nn.Module):
     #outputs = torch.where(coff == 0, outputs, outputs/coff)
     outputs = outputs/(coff+1e-8) #[N, 1, n_samples]
     shape = outputs.size()
-    return outputs.view(shape[0], shape[-1])
+    outputs = outputs.view(shape[0], shape[-1])
+    outputs = outputs[:, :L]
+    return outputs
