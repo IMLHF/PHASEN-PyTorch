@@ -277,6 +277,6 @@ class se_phasen_013(p40): # running v100
   batch_size = 6
 
 
-PARAM = se_phasen_0093 ###
+PARAM = se_phasen_009 ###
 
 # CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=4 python -m se_phasen_0093._2_train

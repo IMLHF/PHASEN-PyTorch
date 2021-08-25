@@ -1,6 +1,7 @@
-# ./toserver.sh room@15123 pc_RealIRM_RelativeLossAFD500
+# ./toserver.sh room@15123 local_folder exp_name
+# ./toserver.sh room@15123 phasen_torch se_phasen_009
 
-if [ -z "$1" ] || [ -z "$2" ]; then
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
   echo "Need a destination."
   exit -1
 fi
@@ -17,17 +18,37 @@ rm */__pycache__* -rf
 
 if [ "$site" == "p40" ]; then
   echo "To $user@$site:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$2"
-  rsync -avh -e "ssh -p 22 -o ProxyCommand='ssh -p 8695 zhangwenbo5@120.92.114.84 -W %h:%p'" --exclude-from='.gitignore' ./phasen_torch/* zhangwenbo5@ksai-P40-2:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$2
+  rsync -avh -e "ssh -p 22 -o ProxyCommand='ssh -p 8695 zhangwenbo5@120.92.114.84 -W %h:%p'" --exclude-from='.gitignore' ./$2/* zhangwenbo5@ksai-P40-2:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$3
 elif [ "$site" == "v100-3" ]; then
   echo "To $user@$site:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$2"
-  rsync -avh -e "ssh -p 22 -o ProxyCommand='ssh -p 8695 zhangwenbo5@120.92.114.84 -W %h:%p'" --exclude-from='.gitignore' ./phasen_torch/* zhangwenbo5@ksai-v100-3:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$2
+  rsync -avh -e "ssh -p 22 -o ProxyCommand='ssh -p 8695 zhangwenbo5@120.92.114.84 -W %h:%p'" --exclude-from='.gitignore' ./$2/* zhangwenbo5@ksai-v100-3:/home/zhangwenbo5/lihongfeng/TorchPHASEN/$3
 elif [ "$site" == "15123" ] || [ "$site" == "15041" ] || [ "$site" == "15043" ]; then
   echo "To $user@$site:~/worklhf/TorchPHASEN/$2"
-  rsync -avh -e 'ssh -p '$site --exclude-from='.gitignore' ./phasen_torch/* $user@speaker.is99kdf.xyz:~/worklhf/TorchPHASEN/$2
+  rsync -avh -e 'ssh -p '$site --exclude-from='.gitignore' ./$2/* $user@speaker.is99kdf.xyz:~/worklhf/TorchPHASEN/$3
 elif [ "$site" == "15043ali" ]; then
   echo "To $user@$site:~/worklhf/TorchPHASEN/$2"
-  rsync -avh -e 'ssh -p 6662' --exclude-from='.gitignore' ./phasen_torch/* $user@47.92.169.196:~/worklhf/TorchPHASEN/$2
-
+  rsync -avh -e 'ssh -p 6662' --exclude-from='.gitignore' ./$2/* $user@47.92.169.196:~/worklhf/TorchPHASEN/$3
+elif [ "$site" == "bss13001" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13001' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "bss13002" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13002' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "bss13003" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13003' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "bss13004" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13004' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "vf113006" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13006' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "vf213007" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13007' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
+elif [ "$site" == "vf313008" ]; then
+  echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
+  rsync -avh -e 'ssh -p 13008' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
 fi
 # -a ：递归到目录，即复制所有文件和子目录。另外，打开归档模式和所有其他选项（相当于 -rlptgoD）
 # -v ：详细输出

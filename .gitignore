@@ -5,6 +5,6 @@ __pycache__
 ~*
 .vscode
 _pesq*
-DPT_FSNET
+DPT_FSNET_raw
 se_upbound.py
 -FLAGS.py
