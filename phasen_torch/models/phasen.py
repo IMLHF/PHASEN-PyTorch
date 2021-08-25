@@ -636,7 +636,7 @@ class PHASEN(nn.Module):
     for i, name in enumerate(sum_loss_names):
       loss_t = loss_dict[name]
       if len(PARAM.sum_losses_w) > 0:
-        loss_t *= PARAM.sum_losses_w[i]
+        loss_t = loss_t * PARAM.sum_losses_w[i]
       sum_loss += loss_t
     # endregion sum_loss
 
@@ -646,7 +646,7 @@ class PHASEN(nn.Module):
     for i, name in enumerate(show_loss_names):
       loss_t = loss_dict[name]
       if len(PARAM.show_losses_w) > 0:
-        loss_t *= PARAM.show_losses_w[i]
+        loss_t = loss_t * PARAM.show_losses_w[i]
       show_losses.append(loss_t)
     show_losses = torch.stack(show_losses)
     # endregion show_losses
@@ -657,7 +657,7 @@ class PHASEN(nn.Module):
     for i, name in enumerate(stop_criterion_loss_names):
       loss_t = loss_dict[name]
       if len(PARAM.stop_criterion_losses_w) > 0:
-        loss_t *= PARAM.stop_criterion_losses_w[i]
+        loss_t = loss_t * PARAM.stop_criterion_losses_w[i]
       stop_criterion_losses_sum += loss_t
     # endregion stop_criterion_losses
 
