@@ -1,5 +1,4 @@
 import os
-import tensorflow as tf
 import collections
 from pathlib import Path
 import numpy as np
