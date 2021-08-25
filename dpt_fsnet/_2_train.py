@@ -95,9 +95,9 @@ def unfold_list(lst):
 
 def eval_one_epoch(val_model, val_batch_iter):
   val_model.eval()
-  return EvalOutputs(sum_loss=0,
-                     show_losses=0,
-                     cost_time=0)
+  # return EvalOutputs(sum_loss=0,
+  #                    show_losses=0,
+  #                    cost_time=0)
 
   val_s_time = time.time()
   ont_batch_time = time.time()
@@ -214,7 +214,7 @@ def main():
   val_dataset = data_pipline.NoisyCleanDataset(noisy_valset_wav, clean_valset_wav)
   train_batch_iter = DataLoader(train_dataset, batch_size=PARAM.batch_size,
                                 shuffle=True, num_workers=0)
-  val_batch_iter = DataLoader(val_dataset, batch_size=PARAM.batch_size,
+  val_batch_iter = DataLoader(val_dataset, batch_size=PARAM.batch_size*2,
                               shuffle=True, num_workers=0)
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   # print(device)
