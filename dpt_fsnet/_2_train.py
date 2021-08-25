@@ -20,7 +20,7 @@ np.set_printoptions(formatter={'float': '{: 0.4f}'.format})
 
 class TrainOutputs(
     collections.namedtuple("TrainOutputs",
-                           ("sum_loss", "stop_c_loss", "show_losses",
+                           ("sum_loss", "show_losses",
                             "cost_time", "lr"))):
   pass
 
@@ -35,7 +35,6 @@ def train_one_epoch(train_model, train_batch_iter, train_log_file):
 
   avg_sum_loss = None
   avg_show_losses = None
-  avg_stop_c_loss = None
   total_i = PARAM.n_train_set_records//PARAM.batch_size
   for i, batch_in in enumerate(train_batch_iter, 1):
     noisy_batch, clean_batch, _, _ = batch_in
@@ -47,29 +46,26 @@ def train_one_epoch(train_model, train_batch_iter, train_log_file):
     train_model.update_params(losses.sum_loss)
     sum_loss = losses.sum_loss.cpu().detach().numpy()
     show_losses = losses.show_losses.cpu().detach().numpy()
-    stop_c_loss = losses.stop_criterion_loss.cpu().detach().numpy()
 
     if avg_sum_loss is None:
       avg_sum_loss = sum_loss
       avg_show_losses = show_losses
-      avg_stop_c_loss = stop_c_loss
     else:
       avg_sum_loss += sum_loss
       avg_show_losses += show_losses
-      avg_stop_c_loss += stop_c_loss
     i += 1
     print("\r", end="")
     print(
-        "train: %d/%d, cost %.2fs, sum_loss %.4f, stop_loss %.4f, show_losses %s, lr %.2e"
+        "train: %d/%d, cost %.2fs, sum_loss %.4f, show_losses %s, lr %.2e"
         "                  " % (
-          i, total_i, time.time()-one_batch_time, sum_loss, stop_c_loss,
+          i, total_i, time.time()-one_batch_time, sum_loss,
           str(np.round(show_losses, 4)), lr),
         flush=True, end="")
     one_batch_time = time.time()
     if i % PARAM.batches_to_logging == 0:
       print("\r", end="")
-      msg = "  Minbatch %04d: sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e, time:%ds. \n" % (
-              i, avg_sum_loss/i, avg_stop_c_loss/i, np.round(avg_show_losses/i, 4), lr, time.time()-minbatch_time,
+      msg = "  Minbatch %04d: sum_loss:%.4f, show_losses:%s, lr:%.2e, time:%ds. \n" % (
+              i, avg_sum_loss/i, np.round(avg_show_losses/i, 4), lr, time.time()-minbatch_time,
             )
       minbatch_time = time.time()
       misc_utils.print_log(msg, train_log_file)
@@ -78,9 +74,7 @@ def train_one_epoch(train_model, train_batch_iter, train_log_file):
   e_time = time.time()
   avg_sum_loss = avg_sum_loss / total_i
   avg_show_losses = avg_show_losses / total_i
-  avg_stop_c_loss = avg_stop_c_loss / total_i
   return TrainOutputs(sum_loss=avg_sum_loss,
-                      stop_c_loss=avg_stop_c_loss,
                       show_losses=np.round(avg_show_losses, 4),
                       cost_time=e_time-s_time,
                       lr=lr)
@@ -88,8 +82,7 @@ def train_one_epoch(train_model, train_batch_iter, train_log_file):
 
 class EvalOutputs(
     collections.namedtuple("EvalOutputs",
-                           ("sum_loss", "show_losses",
-                            "stop_criterion_loss", "cost_time"))):
+                           ("sum_loss", "show_losses", "cost_time"))):
   pass
 
 def round_lists(lst, rd):
@@ -102,13 +95,15 @@ def unfold_list(lst):
 
 def eval_one_epoch(val_model, val_batch_iter):
   val_model.eval()
+  return EvalOutputs(sum_loss=0,
+                     show_losses=0,
+                     cost_time=0)
 
   val_s_time = time.time()
   ont_batch_time = time.time()
 
   avg_sum_loss = None
   avg_show_losses = None
-  avg_stop_c_loss = None
   total_i = PARAM.n_val_set_records//PARAM.batch_size
   for i, batch_in in enumerate(val_batch_iter, 1):
     with torch.no_grad():
@@ -120,7 +115,6 @@ def eval_one_epoch(val_model, val_batch_iter):
       losses = val_model.get_losses(est_features, clean_batch)
       sum_loss = losses.sum_loss.cpu().numpy()
       show_losses = losses.show_losses.cpu().numpy()
-      stop_c_loss = losses.stop_criterion_loss.cpu().numpy()
 
       # print(np.mean(val_model.clean_mag_batch.cpu().numpy()),
       #       np.std(val_model.clean_mag_batch.cpu().numpy()),
@@ -130,16 +124,14 @@ def eval_one_epoch(val_model, val_batch_iter):
     if avg_sum_loss is None:
       avg_sum_loss = sum_loss
       avg_show_losses = show_losses
-      avg_stop_c_loss = stop_c_loss
     else:
       avg_sum_loss += sum_loss
       avg_show_losses += show_losses
-      avg_stop_c_loss += stop_c_loss
     # if i >5 : break
     print("\r", end="")
-    print("validate: %d/%d, cost %.2fs, sum_loss %.4f, stop_loss %.4f, show_losses %s"
+    print("validate: %d/%d, cost %.2fs, sum_loss %.4f, show_losses %s"
           "                        " % (
-              i, total_i, time.time()-ont_batch_time, sum_loss, stop_c_loss,
+              i, total_i, time.time()-ont_batch_time, sum_loss,
               str(np.round(show_losses, 4))
           ),
           flush=True, end="")
@@ -148,11 +140,9 @@ def eval_one_epoch(val_model, val_batch_iter):
   print("\r", end="")
   avg_sum_loss = avg_sum_loss / total_i
   avg_show_losses = avg_show_losses / total_i
-  avg_stop_c_loss = avg_stop_c_loss / total_i
   val_e_time = time.time()
   return EvalOutputs(sum_loss=avg_sum_loss,
                      show_losses=np.round(avg_show_losses, 4),
-                     stop_criterion_loss=avg_stop_c_loss,
                      cost_time=val_e_time-val_s_time)
 
 
@@ -242,16 +232,14 @@ def main():
     # region validation before training
     misc_utils.print_log("\n\n", train_log_file)
     misc_utils.print_log("sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
-    misc_utils.print_log("stop criterion losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
     misc_utils.print_log("show losses: "+str(PARAM.show_losses)+"\n", train_log_file)
     evalOutputs_prev = eval_one_epoch(dpt_fsnet_model, val_batch_iter)
     misc_utils.print_log("                                            "
                          "                                            "
                          "                                         \n",
                          train_log_file, no_time=True)
-    val_msg = "PRERUN.val> sum_loss:%.4F, stop_loss:%.4F, show_losses:%s, Cost itme:%.2Fs.\n" % (
+    val_msg = "PRERUN.val> sum_loss:%.4F, show_losses:%s, Cost itme:%.2Fs.\n" % (
         evalOutputs_prev.sum_loss,
-        evalOutputs_prev.stop_criterion_loss,
         evalOutputs_prev.show_losses,
         evalOutputs_prev.cost_time)
     misc_utils.print_log(val_msg, train_log_file)
@@ -264,12 +252,11 @@ def main():
     misc_utils.print_log("\n\n", train_log_file, no_time=True)
     misc_utils.print_log("Epoch %03d/%03d:\n" % (epoch, max_epoch+1), train_log_file)
     misc_utils.print_log("  sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
-    misc_utils.print_log("  stop_criterion_losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
     misc_utils.print_log("  show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
 
     # train
     trainOutputs = train_one_epoch(dpt_fsnet_model, train_batch_iter, train_log_file)
-    misc_utils.print_log("  Train     > sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
+    misc_utils.print_log("  Train     > sum_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
         trainOutputs.sum_loss,
         trainOutputs.stop_c_loss,
         trainOutputs.show_losses,
@@ -279,7 +266,7 @@ def main():
 
     # validation
     evalOutputs = eval_one_epoch(dpt_fsnet_model, val_batch_iter)
-    misc_utils.print_log("  Validation> sum_loss%.4f, stop_loss:%.4f, show_losses:%s, Time:%ds.           \n" % (
+    misc_utils.print_log("  Validation> sum_loss%.4f, show_losses:%s, Time:%ds.           \n" % (
         evalOutputs.sum_loss,
         evalOutputs.stop_criterion_loss,
         evalOutputs.show_losses,
