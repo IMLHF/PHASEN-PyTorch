@@ -45,6 +45,16 @@ def batchSum_compressedStft_mse(est_mag, est_normstft, clean_mag, clean_normstft
   loss = batchSum_MSE(est_cpr_stft, clean_cpr_stft)
   return loss
 
+def batchSum_stftmLoss(est_stft, clean_stft):
+  '''
+  est_stft:   (real, imag), [batch, 2, F, T]
+  clean_stft: (real, imag), [batch, 2, F, T]
+  '''
+  abst = torch.abs(clean_stft) - torch.abs(est_stft)
+  tmp = torch.abs(abst[:,0,:,:] + abst[:,1,:,:]) #[B, 1, F, T]
+  loss = torch.mean(torch.sum(tmp, 0))
+  return loss
+
 def batchSum_relativeMSE(y1, y2, RL_epsilon, index_=2.0):
   # y1, y2 : [batch, F, T]
   relative_loss = torch.abs(y1-y2)/(torch.abs(y1)+torch.abs(y2)+RL_epsilon)
