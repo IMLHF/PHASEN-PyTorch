@@ -66,7 +66,7 @@ class BaseConfig(StaticKey):
 
   """
   @param losses:
-  see phasen.py : PHASEN.get_losses()
+  see models/dpt_fsnet.py : Net.get_losses()
   """
   sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
   sum_losses_w = []
@@ -83,27 +83,9 @@ class BaseConfig(StaticKey):
 
 
 
-class p40(BaseConfig):
-  # GPU_PARTION = 0.27
-  root_dir = '/home/zhangwenbo5/lihongfeng/TorchPHASEN'
-
-
-class test001(p40): # done v100
+class se_dptfsnet_001(BaseConfig): # bss13003
   '''
-  phasen 001
-  loss_compressedMag_mse + loss_compressedStft_mse
-  '''
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse", "loss_CosSim", "loss_stft_mse"]
-  show_losses_w = []
-  stop_criterion_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
-  stop_criterion_losses_w = []
-
-
-class se_phasen_009(p40): # done v100
-  '''
-  phasen 009
+  dpt_fsnet 001
   loss_compressedMag_mse + loss_compressedStft_mse
   '''
   sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
@@ -118,6 +100,6 @@ class se_phasen_009(p40): # done v100
   # test_clean_sets = ['clean_trainset_wav']
 
 
-PARAM = se_phasen_009 ###
+PARAM = se_dptfsnet_001 ###
 
 # CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=4 python -m se_phasen_0093._2_train

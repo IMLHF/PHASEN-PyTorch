@@ -8,7 +8,7 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 
 
-from .models import phasen
+from .models import dpt_fsnet
 from .data_pipline import data_pipline
 from .utils import misc_utils
 from .utils import audio
@@ -228,15 +228,15 @@ def main():
                               shuffle=True, num_workers=0)
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   # print(device)
-  phasen_model = phasen.PHASEN(PARAM.MODEL_TRAIN_KEY, device)
+  dpt_fsnet_model = dpt_fsnet.Net(PARAM.MODEL_TRAIN_KEY, device)
 
   ckpt_lst = [str(_dir) for _dir in list(ckpt_dir.glob("*.ckpt"))]
   if len(ckpt_lst) > 0:
     ckpt_lst.sort()
-    phasen_model.load(ckpt_lst[-1])
+    dpt_fsnet_model.load(ckpt_lst[-1])
     misc_utils.print_log("load ckpt %s\n" % ckpt_lst[-1])
   else:
-    for name, param in phasen_model.named_parameters():
+    for name, param in dpt_fsnet_model.named_parameters():
       print(name, ": ", param.size(), flush=True)
 
     # region validation before training
@@ -244,7 +244,7 @@ def main():
     misc_utils.print_log("sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
     misc_utils.print_log("stop criterion losses: "+str(PARAM.stop_criterion_losses)+"\n", train_log_file)
     misc_utils.print_log("show losses: "+str(PARAM.show_losses)+"\n", train_log_file)
-    evalOutputs_prev = eval_one_epoch(phasen_model, val_batch_iter)
+    evalOutputs_prev = eval_one_epoch(dpt_fsnet_model, val_batch_iter)
     misc_utils.print_log("                                            "
                          "                                            "
                          "                                         \n",
@@ -256,7 +256,7 @@ def main():
         evalOutputs_prev.cost_time)
     misc_utils.print_log(val_msg, train_log_file)
 
-  s_epoch = phasen_model.start_epoch
+  s_epoch = dpt_fsnet_model.start_epoch
   assert s_epoch > 0, 'start epoch > 0 is required.'
   max_epoch = int(PARAM.max_step / (PARAM.n_train_set_records / PARAM.batch_size))
 
@@ -268,7 +268,7 @@ def main():
     misc_utils.print_log("  show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
 
     # train
-    trainOutputs = train_one_epoch(phasen_model, train_batch_iter, train_log_file)
+    trainOutputs = train_one_epoch(dpt_fsnet_model, train_batch_iter, train_log_file)
     misc_utils.print_log("  Train     > sum_loss:%.4f, stop_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
         trainOutputs.sum_loss,
         trainOutputs.stop_c_loss,
@@ -278,7 +278,7 @@ def main():
         train_log_file)
 
     # validation
-    evalOutputs = eval_one_epoch(phasen_model, val_batch_iter)
+    evalOutputs = eval_one_epoch(dpt_fsnet_model, val_batch_iter)
     misc_utils.print_log("  Validation> sum_loss%.4f, stop_loss:%.4f, show_losses:%s, Time:%ds.           \n" % (
         evalOutputs.sum_loss,
         evalOutputs.stop_criterion_loss,
@@ -287,7 +287,7 @@ def main():
         train_log_file)
 
     # test
-    testOutputs = test_one_epoch(phasen_model)
+    testOutputs = test_one_epoch(dpt_fsnet_model)
     misc_utils.print_log("  Test      > Csig: %.3f, Cbak: %.3f, Covl: %.3f, pesq: %.3f,"
                          " ssnr: %.4f, Time:%ds.           \n" % (
                              testOutputs.csig, testOutputs.cbak, testOutputs.covl, testOutputs.pesq,
@@ -298,7 +298,7 @@ def main():
     ckpt_name = PARAM().config_name()+('_iter%04d_trloss%.4f_valloss%.4f_lr%.2e_duration%ds.ckpt' % (
         epoch, trainOutputs.sum_loss, evalOutputs.sum_loss, trainOutputs.lr,
         trainOutputs.cost_time+evalOutputs.cost_time+testOutputs.cost_time))
-    phasen_model.save_every_epoch(str(ckpt_dir.joinpath(ckpt_name)))
+    dpt_fsnet_model.save_every_epoch(str(ckpt_dir.joinpath(ckpt_name)))
     evalOutputs_prev = evalOutputs
     msg = "  ckpt(%s) saved.\n" % ckpt_name
     misc_utils.print_log(msg, train_log_file)
@@ -306,7 +306,7 @@ def main():
   # Done
   misc_utils.print_log("\n", train_log_file, no_time=True)
   msg = ("NaN grads batches: %d\n"
-         "################### Training Done. ###################\n") % phasen_model.nan_grads_batch
+         "################### Training Done. ###################\n") % dpt_fsnet_model.nan_grads_batch
   misc_utils.print_log(msg, train_log_file)
 
 

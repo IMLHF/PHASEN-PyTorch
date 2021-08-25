@@ -1,5 +1,4 @@
 import os
-import tensorflow as tf
 import collections
 from pathlib import Path
 import numpy as np
@@ -100,5 +99,5 @@ if __name__ == "__main__":
   """
   run cmd:
   `OMP_NUM_THREADS=1 python -m xx._3_enhance_testsets --n_process=2 --phase=0`
-  [csig,cbak,cvol,pesq,snr,ssnr]=evaluate_all('/home/lhf/worklhf/PHASEN/noisy_datasets_16k/clean_testset_wav','/home/lhf/worklhf/PHASEN/exp/se_reMagMSE_cnn/enhanced_testsets/noisy_testset_wav')
+  [csig,cbak,cvol,pesq,snr,ssnr]=evaluate_all('/home/lhf/worklhf/PROOT/noisy_datasets_16k/clean_testset_wav','/home/lhf/worklhf/PROOT/exp/se_reMagMSE_cnn/enhanced_testsets/noisy_testset_wav')
   """

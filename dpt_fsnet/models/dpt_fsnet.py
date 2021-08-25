@@ -27,9 +27,9 @@ class WavFeatures(
   pass
 
 
-class PHASEN(nn.Module):
+class Net(nn.Module):
   def __init__(self, mode, device):
-    super(PHASEN, self).__init__()
+    super(Net, self).__init__()
     self.mode = mode
     self.device = device
     self._net_model = DPT_FSNET(PARAM.frequency_dim, PARAM.dpt_fsnet_width)
@@ -99,7 +99,7 @@ class PHASEN(nn.Module):
       return
     self._nan_grads_batch += 1
 
-  def __call__(self, mixed_wav_batch):
+  def forward(self, mixed_wav_batch):
     mixed_wav_batch = mixed_wav_batch.to(self.device)
     mixed_stft_batch = self._stft_fn(mixed_wav_batch) # [N, 2, F, T]
     mixed_stft_real = mixed_stft_batch[:, 0, :, :] # [N, F, T]
