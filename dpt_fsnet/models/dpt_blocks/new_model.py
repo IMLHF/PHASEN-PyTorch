@@ -1,8 +1,10 @@
 import torch
 import numpy as np
 import torch.nn as nn
+from torch.utils.checkpoint import checkpoint
 
 from .dual_transf import Dual_Transformer
+from .dual_transf import Dual_Transformer_v2
 
 
 class SPConvTranspose2d(nn.Module):
@@ -75,7 +77,7 @@ class Net(nn.Module):
     self.enc_norm1 = nn.LayerNorm(self.frequency_dim)
     self.enc_prelu1 = nn.PReLU(self.width)
 
-    self.dual_transformer = Dual_Transformer(64, 64, num_layers=4)  # # [b, 64, nframes, 8]
+    self.dual_transformer = Dual_Transformer_v2(64, 64, num_layers=4)  # # [b, 64, nframes, 8]
 
     # gated output layer
     self.output1 = nn.Sequential(
@@ -112,6 +114,7 @@ class Net(nn.Module):
 
     #print(x1.shape)
     out = self.dual_transformer(x1)  # [b, 64, num_frames, 256]
+    # out = checkpoint(self.dual_transformer, x1)
 
     out = self.output1(out) * self.output2(out)  # mask [b, 64, num_frames, 256]
 
