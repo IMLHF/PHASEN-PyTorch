@@ -93,6 +93,7 @@ class se_dptfsnet_001(BaseConfig): # bss13003
   show_losses_w = [1.0/4, 1.0]
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
+  max_step = 2893 * 100 - 1
   # test_noisy_sets = ['noisy_trainset_wav']
   # test_clean_sets = ['clean_trainset_wav']
 

@@ -258,7 +258,6 @@ def main():
     trainOutputs = train_one_epoch(dpt_fsnet_model, train_batch_iter, train_log_file)
     misc_utils.print_log("  Train     > sum_loss:%.4f, show_losses:%s, lr:%.2e Time:%ds.   \n" % (
         trainOutputs.sum_loss,
-        trainOutputs.stop_c_loss,
         trainOutputs.show_losses,
         trainOutputs.lr,
         trainOutputs.cost_time),
@@ -268,7 +267,6 @@ def main():
     evalOutputs = eval_one_epoch(dpt_fsnet_model, val_batch_iter)
     misc_utils.print_log("  Validation> sum_loss%.4f, show_losses:%s, Time:%ds.           \n" % (
         evalOutputs.sum_loss,
-        evalOutputs.stop_criterion_loss,
         evalOutputs.show_losses,
         evalOutputs.cost_time),
         train_log_file)
