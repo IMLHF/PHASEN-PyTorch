@@ -158,6 +158,7 @@ def fwSNRseg(cleanSig, enhancedSig, fs, frameLen=0.03, overlap=0.75):
 
 def lpcoeff(speech_frame, model_order):
     # (1) Compute Autocor lags
+    eps=np.finfo(np.float64).eps
     winlength = speech_frame.shape[0]
     R = []
     for k in range(model_order + 1):
@@ -413,7 +414,7 @@ def compareone(args):
     c,fc = sf.read(clean)
     p,fp = sf.read(processed)
     assert len(c)==len(p), 'c.shape=%r, p.shape=%r'%(c.shape,p.shape)
-    assert fc == fp, 'fc=%d fp=%d'%(fc,fd)
+    assert fc == fp, 'fc=%d fp=%d'%(fc, fp)
 
     try:
       ssnr,pesq,csig,cbak,covl=composite(c,p,fc)
