@@ -161,16 +161,16 @@ class Net(nn.Module):
     est_stft_real = est_stft_batch[:, 0, :, :] # [N, F, T]
     est_stft_imag = est_stft_batch[:, 1, :, :] # [N, F, T]
     est_mag_batch = torch.sqrt(est_stft_real**2+est_stft_imag**2) # [N, F, T]
-    # est_angle_batch = torch.atan2(est_stft_imag, est_stft_real) # [N, F, T]
-    # _N, _F, _T = est_mag_batch.size()
-    # est_normed_stft_batch = torch.div(
-    #     est_stft_batch, est_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+    est_angle_batch = torch.atan2(est_stft_imag, est_stft_real) # [N, F, T]
+    _N, _F, _T = est_mag_batch.size()
+    est_normed_stft_batch = torch.div(
+        est_stft_batch, est_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
 
     return WavFeatures(wav_batch=est_wav_batch,
                        stft_batch=est_stft_batch,
                        mag_batch=est_mag_batch,
-                       angle_batch=0,
-                       normed_stft_batch=0)
+                       angle_batch=est_angle_batch,
+                       normed_stft_batch=est_normed_stft_batch)
 
   def get_losses(self, est_wav_features:WavFeatures, clean_wav_batch):
     self.clean_wav_batch = clean_wav_batch.to(self.device)

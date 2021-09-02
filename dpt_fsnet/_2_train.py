@@ -287,11 +287,12 @@ def main():
     evalOutputs_prev = evalOutputs
     msg = "  ckpt(%s) saved.\n" % ckpt_name
     misc_utils.print_log(msg, train_log_file)
+    msg = "  Nan grad batch %d\n" % dpt_fsnet_model._nan_grads_batch
+    misc_utils.print_log(msg, train_log_file)
 
   # Done
   misc_utils.print_log("\n", train_log_file, no_time=True)
-  msg = ("NaN grads batches: %d\n"
-         "################### Training Done. ###################\n") % dpt_fsnet_model.nan_grads_batch
+  msg = ("################### Training Done. ###################\n") % dpt_fsnet_model.nan_grads_batch
   misc_utils.print_log(msg, train_log_file)
 
 
