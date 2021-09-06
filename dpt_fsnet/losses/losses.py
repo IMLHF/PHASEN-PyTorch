@@ -89,6 +89,33 @@ def batchMean_SquareCosSim_loss(est, ref): # -cos^2
   loss = torch.mean(loss_s1)
   return loss
 
+def sisnr(x, s, eps):
+    """
+    Arguments:
+    x: separated signal, N x S tensor
+    s: reference signal, N x S tensor
+    Return:
+    sisnr: N tensor
+    """
+
+    def l2norm(mat, keepdim=False):
+        return torch.norm(mat, dim=-1, keepdim=keepdim)
+
+    if x.shape != s.shape:
+        raise RuntimeError(
+            "Dimention mismatch when calculate si-snr, {} vs {}".format(
+                x.shape, s.shape))
+    x_zm = x - torch.mean(x, dim=-1, keepdim=True)
+    s_zm = s - torch.mean(s, dim=-1, keepdim=True)
+    t = torch.sum(x_zm * s_zm, dim=-1,
+                  keepdim=True) * s_zm / (l2norm(s_zm, keepdim=True) ** 2 + eps)
+    return 20 * torch.log10(eps + l2norm(t) / (l2norm(x_zm - t) + eps))
+
+def batchMean_sisnrLoss(est, clean, eps=1e-8):
+  batch_sisnr = sisnr(est, clean, eps)
+  # print(batch_sisnr.shape)
+  return -torch.mean(batch_sisnr)
+
 # def batchMean_short_time_CosSim_loss(est, ref, st_frame_length, st_frame_step): # -cos
 #   st_est = tf.signal.frame(est, frame_length=st_frame_length, # [batch, frame, st_wav]
 #                            frame_step=st_frame_step, pad_end=True)

@@ -4,7 +4,7 @@ import collections
 import numpy as np
 
 from ..FLAGS import PARAM
-from ..utils import losses
+from ..losses import losses
 from ..utils import misc_utils
 from ..models import conv_stft
 from .dpt_blocks.new_model import Net as DPT_FSNET
@@ -193,73 +193,76 @@ class Net(nn.Module):
     all_losses.extend(PARAM.show_losses)
     all_losses = set(all_losses)
 
-    self.loss_compressedMag_mse = 0
-    self.loss_compressedStft_mse = 0
-    self.loss_mag_mse = 0
-    self.loss_mag_reMse = 0
-    self.loss_stft_mse = 0
-    self.loss_stft_reMse = 0
-    self.loss_mag_mae = 0
-    self.loss_mag_reMae = 0
-    self.loss_stft_mae = 0
-    self.loss_stft_reMae = 0
-    self.loss_wav_L1 = 0
-    self.loss_wav_L2 = 0
-    self.loss_wav_reL2 = 0
-    self.loss_CosSim = 0
-    self.loss_SquareCosSim = 0
+    self.cprmag_mse = 0
+    self.cprstft_mse = 0
+    self.magmse = 0
+    self.mag_reMse = 0
+    self.stftmse = 0
+    self.stft_reMse = 0
+    self.magmae = 0
+    self.mag_reMae = 0
+    self.sftfmae = 0
+    self.stft_reMae = 0
+    self.wavL1 = 0
+    self.wavL2 = 0
+    self.wavReL2 = 0
+    self.cossim = 0
+    self.squareCossim = 0
     self.loss_stftm = 0
+    self.sisnr = 0
 
     # region losses
-    if "loss_compressedMag_mse" in all_losses:
-      self.loss_compressedMag_mse = losses.batchSum_compressedMag_mse(
+    if "cprmag_mse" in all_losses:
+      self.cprmag_mse = losses.batchSum_compressedMag_mse(
           est_clean_mag_batch, self.clean_mag_batch, PARAM.loss_compressedMag_idx)
-    if "loss_compressedStft_mse" in all_losses:
-      self.loss_compressedStft_mse = losses.batchSum_compressedStft_mse(
+    if "cprstft_mse" in all_losses:
+      self.cprstft_mse = losses.batchSum_compressedStft_mse(
           est_clean_mag_batch, est_clean_normed_stft_batch,
           self.clean_mag_batch, self.clean_normed_stft_batch,
           PARAM.loss_compressedMag_idx)
 
 
-    if "loss_mag_mse" in all_losses:
-      self.loss_mag_mse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
-    if "loss_mag_reMse" in all_losses:
-      self.loss_mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
+    if "magmse" in all_losses:
+      self.magmse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
+    if "mag_reMse" in all_losses:
+      self.mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
                                                         PARAM.relative_loss_epsilon, PARAM.RL_idx)
-    if "loss_stft_mse" in all_losses:
-      self.loss_stft_mse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
-    if "loss_stft_reMse" in all_losses:
-      self.loss_stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
+    if "stftmse" in all_losses:
+      self.stftmse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
+    if "stft_reMse" in all_losses:
+      self.stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
                                                          PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
 
-    if "loss_mag_mae" in all_losses:
-      self.loss_mag_mae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
-    if "loss_mag_reMae" in all_losses:
-      self.loss_mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
+    if "magmae" in all_losses:
+      self.magmae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
+    if "mag_reMae" in all_losses:
+      self.mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
                                                         PARAM.relative_loss_epsilon)
-    if "loss_stft_mae" in all_losses:
-      self.loss_stft_mae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
-    if "loss_stft_reMae" in all_losses:
-      self.loss_stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
+    if "sftfmae" in all_losses:
+      self.sftfmae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
+    if "stft_reMae" in all_losses:
+      self.stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
                                                          PARAM.relative_loss_epsilon)
 
     if "loss_stftm" in all_losses:
       self.loss_stftm = losses.batchSum_stftmLoss(est_clean_stft_batch, self.clean_stft_batch,)
 
 
-    if "loss_wav_L1" in all_losses:
-      self.loss_wav_L1 = losses.batchSum_MAE(est_clean_wav_batch, self.clean_wav_batch)
-    if "loss_wav_L2" in all_losses:
-      self.loss_wav_L2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
-    if "loss_wav_reL2" in all_losses:
-      self.loss_wav_reL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
+    if "sisnr" in all_losses:
+      self.sisnr = losses.batchMean_sisnrLoss(est_clean_wav_batch, self.clean_wav_batch)
+    if "wavL1" in all_losses:
+      self.wavL1 = losses.batchSum_MAE(est_clean_wav_batch, self.clean_wav_batch)
+    if "wavL2" in all_losses:
+      self.wavL2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
+    if "wavReL2" in all_losses:
+      self.wavReL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
                                                        PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
-    if "loss_CosSim" in all_losses:
-      self.loss_CosSim = losses.batchMean_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch)
-    if "loss_SquareCosSim" in all_losses:
-      self.loss_SquareCosSim = losses.batchMean_SquareCosSim_loss(
+    if "cossim" in all_losses:
+      self.cossim = losses.batchMean_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch)
+    if "squareCossim" in all_losses:
+      self.squareCossim = losses.batchMean_SquareCosSim_loss(
           est_clean_wav_batch, self.clean_wav_batch)
     # self.loss_stCosSim = losses.batch_short_time_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch,
     #                                                          PARAM.st_frame_length_for_loss,
@@ -268,22 +271,23 @@ class Net(nn.Module):
     #                                                                      PARAM.st_frame_length_for_loss,
     #                                                                      PARAM.st_frame_step_for_loss)
     loss_dict = {
-        'loss_compressedMag_mse': self.loss_compressedMag_mse,
-        'loss_compressedStft_mse': self.loss_compressedStft_mse,
-        'loss_mag_mse': self.loss_mag_mse,
-        'loss_mag_reMse': self.loss_mag_reMse,
-        'loss_stft_mse': self.loss_stft_mse,
-        'loss_stft_reMse': self.loss_stft_reMse,
-        'loss_mag_mae': self.loss_mag_mae,
-        'loss_mag_reMae': self.loss_mag_reMae,
-        'loss_stft_mae': self.loss_stft_mae,
-        'loss_stft_reMae': self.loss_stft_reMae,
-        'loss_wav_L1': self.loss_wav_L1,
-        'loss_wav_L2': self.loss_wav_L2,
-        'loss_wav_reL2': self.loss_wav_reL2,
-        'loss_CosSim': self.loss_CosSim,
-        'loss_SquareCosSim': self.loss_SquareCosSim,
+        'cprmag_mse': self.cprmag_mse,
+        'cprstft_mse': self.cprstft_mse,
+        'magmse': self.magmse,
+        'mag_reMse': self.mag_reMse,
+        'stftmse': self.stftmse,
+        'stft_reMse': self.stft_reMse,
+        'magmae': self.magmae,
+        'mag_reMae': self.mag_reMae,
+        'sftfmae': self.sftfmae,
+        'stft_reMae': self.stft_reMae,
+        'wavL1': self.wavL1,
+        'wavL2': self.wavL2,
+        'wavReL2': self.wavReL2,
+        'cossim': self.cossim,
+        'squareCossim': self.squareCossim,
         'loss_stftm': self.loss_stftm,
+        'sisnr': self.sisnr,
         # 'loss_stCosSim': self.loss_stCosSim,
         # 'loss_stSquareCosSim': self.loss_stSquareCosSim,
     }

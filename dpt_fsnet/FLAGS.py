@@ -67,9 +67,9 @@ class BaseConfig(StaticKey):
   @param losses:
   see models/dpt_fsnet.py : Net.get_losses()
   """
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses = ["cprmag_mse", "cprstft_mse"]
   sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",]
+  show_losses = ["cprmag_mse", "cprstft_mse",]
   #               "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
   show_losses_w = []
 
@@ -84,13 +84,13 @@ class BaseConfig(StaticKey):
 class se_dptfsnet_001copy(BaseConfig): #
   '''
   dpt_fsnet 001
-  loss_compressedMag_mse + loss_compressedStft_mse
+  cprmag_mse + cprstft_mse
   '''
   batch_size = 4
-  sum_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse"]
+  sum_losses = ["cprmag_mse", "cprstft_mse"]
   sum_losses_w = []
-  show_losses = ["loss_compressedMag_mse", "loss_compressedStft_mse",
-                "loss_CosSim", "loss_mag_mse", "loss_stft_mse"]
+  show_losses = ["cprmag_mse", "cprstft_mse",
+                "cosSim", "magmse", "stftmse"]
   show_losses_w = []
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
@@ -99,6 +99,24 @@ class se_dptfsnet_001copy(BaseConfig): #
   # test_clean_sets = ['clean_trainset_wav']
 
 
-PARAM = se_dptfsnet_001copy ###
+class se_dptfsnet_002(BaseConfig): #
+  '''
+  dpt_fsnet 002
+  0,5*rmse + 0.5*sisnr
+  '''
+  batch_size = 4
+  sum_losses = ["mag_reMae", "sisnr"]
+  relative_loss_epsilon = 0.1
+  sum_losses_w = [0.5, 0.5]
+  show_losses = ["mag_reMae", "sisnr",
+                "cossim", "mag_mse", "stft_mse"]
+  show_losses_w = []
+  stft_div_norm_eps = 1e-7
+  train_val_wav_seconds = 4.0
+  max_step = 2893 * 100 - 1
+  # test_noisy_sets = ['noisy_trainset_wav']
+  # test_clean_sets = ['clean_trainset_wav']
+
+PARAM = se_dptfsnet_002 ###
 
 # CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=4 python -m se_phasen_0093._2_train
