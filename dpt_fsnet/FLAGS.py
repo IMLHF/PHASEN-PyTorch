@@ -90,7 +90,7 @@ class se_dptfsnet_001copy(BaseConfig): #
   sum_losses = ["cprmag_mse", "cprstft_mse"]
   sum_losses_w = []
   show_losses = ["cprmag_mse", "cprstft_mse",
-                "cosSim", "magmse", "stftmse"]
+                 "cosSim", "magmse", "stftmse"]
   show_losses_w = []
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
@@ -109,7 +109,7 @@ class se_dptfsnet_002(BaseConfig): #
   relative_loss_epsilon = 0.1
   sum_losses_w = [0.5, 0.5]
   show_losses = ["mag_reMae", "sisnr",
-                "cossim", "mag_mse", "stft_mse"]
+                 "cossim", "magmse", "stftmse"]
   show_losses_w = []
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
