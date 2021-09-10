@@ -250,7 +250,7 @@ def main():
 
   for epoch in range(s_epoch, max_epoch+1):
     misc_utils.print_log("\n\n", train_log_file, no_time=True)
-    misc_utils.print_log("Epoch %03d/%03d:\n" % (epoch, max_epoch+1), train_log_file)
+    misc_utils.print_log("Epoch %03d/%03d:\n" % (epoch, max_epoch), train_log_file)
     misc_utils.print_log("  sum_losses: "+str(PARAM.sum_losses)+"\n", train_log_file)
     misc_utils.print_log("  show_losses: "+str(PARAM.show_losses)+"\n", train_log_file)
 

@@ -90,11 +90,13 @@ class se_dptfsnet_001copy(BaseConfig): #
   sum_losses = ["cprmag_mse", "cprstft_mse"]
   sum_losses_w = []
   show_losses = ["cprmag_mse", "cprstft_mse",
-                 "cosSim", "magmse", "stftmse"]
+                 "cossim", "magmse", "stftmse"]
   show_losses_w = []
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
-  max_step = 2893 * 100 - 1
+  max_step = 2893 * 100
+  frame_step = 160
+  fft_length = 512
   # test_noisy_sets = ['noisy_trainset_wav']
   # test_clean_sets = ['clean_trainset_wav']
 
@@ -113,10 +115,32 @@ class se_dptfsnet_002(BaseConfig): #
   show_losses_w = []
   stft_div_norm_eps = 1e-7
   train_val_wav_seconds = 4.0
-  max_step = 2893 * 100 - 1
+  max_step = 2893 * 100
   # test_noisy_sets = ['noisy_trainset_wav']
   # test_clean_sets = ['clean_trainset_wav']
 
-PARAM = se_dptfsnet_002 ###
+
+class se_dptfsnet_003(BaseConfig): #
+  '''
+  dpt_fsnet 003
+  cprmag_mse + cprstft_mse
+  '''
+  batch_size = 4
+  sum_losses = ["cprmag_mse", "cprstft_mse", "wavL2"]
+  sum_losses_w = []
+  show_losses = ["cprmag_mse", "cprstft_mse",
+                 "cossim", "magmse", "stftmse"]
+  show_losses_w = []
+  stft_div_norm_eps = 1e-12
+  train_val_wav_seconds = 4.0
+  max_step = 2893 * 100
+  # frame_step = 160
+  # frame_length = 512
+  # fft_length = 512
+  # frequency_dim = 257
+  # test_noisy_sets = ['noisy_trainset_wav']
+  # test_clean_sets = ['clean_trainset_wav']
+
+PARAM = se_dptfsnet_003 ###
 
 # CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=4 python -m se_phasen_0093._2_train
