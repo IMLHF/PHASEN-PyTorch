@@ -67,10 +67,10 @@ class Net(nn.Module):
     self.mode = mode
     self.device = device
     self._net_model = DPT_FSNET(PARAM.frequency_dim, PARAM.dpt_fsnet_width)
-    # self._stft_fn = conv_stft.ConvSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, 2, F, T]
-    # self._istft_fn = conv_stft.ConviSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, L]
-    self._stft_fn = TorchSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
-    self._istft_fn = TorchiSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
+    self._stft_fn = conv_stft.ConvSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, 2, F, T]
+    self._istft_fn = conv_stft.ConviSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length) # [N, L]
+    # self._stft_fn = TorchSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
+    # self._istft_fn = TorchiSTFT(PARAM.frame_length, PARAM.frame_step, PARAM.fft_length)
 
     if mode == PARAM.MODEL_VALIDATE_KEY or mode == PARAM.MODEL_INFER_KEY:
       # self.eval(True)
@@ -164,7 +164,8 @@ class Net(nn.Module):
     est_angle_batch = torch.atan2(est_stft_imag, est_stft_real) # [N, F, T]
     _N, _F, _T = est_mag_batch.size()
     est_normed_stft_batch = torch.div(
-        est_stft_batch, est_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+        est_stft_batch,
+        torch.clamp_min(est_mag_batch.view(_N, 1, _F, _T), PARAM.stft_div_norm_eps))
 
     return WavFeatures(wav_batch=est_wav_batch,
                        stft_batch=est_stft_batch,
@@ -181,7 +182,8 @@ class Net(nn.Module):
     self.clean_angle_batch = torch.atan2(clean_stft_imag, clean_stft_real) # [N, F, T]
     _N, _F, _T = self.clean_mag_batch.size()
     self.clean_normed_stft_batch = torch.div(
-        self.clean_stft_batch, self.clean_mag_batch.view(_N, 1, _F, _T)+PARAM.stft_div_norm_eps)
+        self.clean_stft_batch,
+        torch.clamp_min(self.clean_mag_batch.view(_N, 1, _F, _T), PARAM.stft_div_norm_eps))
 
     est_clean_mag_batch = est_wav_features.mag_batch
     est_clean_stft_batch = est_wav_features.stft_batch
@@ -226,24 +228,24 @@ class Net(nn.Module):
       self.magmse = losses.batchSum_MSE(est_clean_mag_batch, self.clean_mag_batch)
     if "mag_reMse" in all_losses:
       self.mag_reMse = losses.batchSum_relativeMSE(est_clean_mag_batch, self.clean_mag_batch,
-                                                        PARAM.relative_loss_epsilon, PARAM.RL_idx)
+                                                   PARAM.relative_loss_epsilon, PARAM.RL_idx)
     if "stftmse" in all_losses:
       self.stftmse = losses.batchSum_MSE(est_clean_stft_batch, self.clean_stft_batch)
     if "stft_reMse" in all_losses:
       self.stft_reMse = losses.batchSum_relativeMSE(est_clean_stft_batch, self.clean_stft_batch,
-                                                         PARAM.relative_loss_epsilon, PARAM.RL_idx)
+                                                    PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
 
     if "magmae" in all_losses:
       self.magmae = losses.batchSum_MAE(est_clean_mag_batch, self.clean_mag_batch)
     if "mag_reMae" in all_losses:
       self.mag_reMae = losses.batchSum_relativeMAE(est_clean_mag_batch, self.clean_mag_batch,
-                                                        PARAM.relative_loss_epsilon)
+                                                   PARAM.relative_loss_epsilon)
     if "sftfmae" in all_losses:
       self.sftfmae = losses.batchSum_MAE(est_clean_stft_batch, self.clean_stft_batch)
     if "stft_reMae" in all_losses:
       self.stft_reMae = losses.batchSum_relativeMAE(est_clean_stft_batch, self.clean_stft_batch,
-                                                         PARAM.relative_loss_epsilon)
+                                                    PARAM.relative_loss_epsilon)
 
     if "loss_stftm" in all_losses:
       self.loss_stftm = losses.batchSum_stftmLoss(est_clean_stft_batch, self.clean_stft_batch,)
@@ -257,7 +259,7 @@ class Net(nn.Module):
       self.wavL2 = losses.batchSum_MSE(est_clean_wav_batch, self.clean_wav_batch)
     if "wavReL2" in all_losses:
       self.wavReL2 = losses.batchSum_relativeMSE(est_clean_wav_batch, self.clean_wav_batch,
-                                                       PARAM.relative_loss_epsilon, PARAM.RL_idx)
+                                                 PARAM.relative_loss_epsilon, PARAM.RL_idx)
 
     if "cossim" in all_losses:
       self.cossim = losses.batchMean_CosSim_loss(est_clean_wav_batch, self.clean_wav_batch)
