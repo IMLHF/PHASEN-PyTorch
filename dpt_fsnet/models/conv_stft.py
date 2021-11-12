@@ -21,13 +21,13 @@ def init_kernels(win_len, win_inc, fft_len, win_type=None, invers=False):
     kernel = np.linalg.pinv(kernel).T
 
   kernel = kernel*window
-  kernel = kernel[:, None, :]
+  kernel = kernel[:, None, :] # groups in F.conv1d is 1.
   return torch.from_numpy(kernel.astype(np.float32)), torch.from_numpy(window[None,:,None].astype(np.float32))
 
 
 class ConvSTFT(nn.Module):
 
-  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', pad_end=True,
+  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', pad_center=True,
                feature_type='complex', fix=True):
     super(ConvSTFT, self).__init__()
 
@@ -42,7 +42,7 @@ class ConvSTFT(nn.Module):
     self.stride = win_inc
     self.win_len = win_len
     self.dim = self.fft_len
-    self.pad_end = pad_end
+    self.pad_center = pad_center
 
   def forward(self, inputs):
     '''
@@ -50,10 +50,10 @@ class ConvSTFT(nn.Module):
     '''
     assert inputs.dim() == 2, 'inputs dims error.'
 
-    if self.pad_end:
-      inputs = torch.nn.functional.pad(inputs, [0, self.dim+2])
+    if self.pad_center:
+      inputs = torch.nn.functional.pad(inputs, [self.dim//2+1, self.dim//2+1])
 
-    inputs = inputs.unsqueeze_(1) # [N, C, L], c=1
+    inputs = inputs.unsqueeze_(1) # [N, 1, L]
     outputs = F.conv1d(
         inputs, self.weight, stride=self.stride,
         # padding=self.dim//2+1,
@@ -72,7 +72,7 @@ class ConvSTFT(nn.Module):
 
 class ConviSTFT(nn.Module):
 
-  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', feature_type='complex', fix=True):
+  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', fix=True):
     super(ConviSTFT, self).__init__()
     if fft_len is None:
       self.fft_len = np.int(2**np.ceil(np.log2(win_len)))
@@ -80,7 +80,6 @@ class ConviSTFT(nn.Module):
       self.fft_len = fft_len
     kernel, window = init_kernels(win_len, win_inc, self.fft_len, win_type, invers=True)
     self.weight = nn.Parameter(kernel, requires_grad=(not fix))
-    self.feature_type = feature_type
     self.win_type = win_type
     self.win_len = win_len
     self.win_inc = win_inc
@@ -97,11 +96,11 @@ class ConviSTFT(nn.Module):
 
     if phase is not None:
       assert inputs.dim()==3, 'inputs dim error.'
-      assert phase.dim()==3, 'phase dim error'
+      assert phase.dim()==3, 'pahse dim error'
       real = inputs*torch.cos(phase)
       imag = inputs*torch.sin(phase)
       inputs = torch.cat([real, imag], 1)
-    else:
+    else: # stft:feature_type='complex'
       assert inputs.dim()==4, 'inputs dim error'
       shape = inputs.size() #[N, 2, F, T]
       inputs = inputs.reshape([shape[0], shape[1]*shape[2], shape[3]])
@@ -114,5 +113,5 @@ class ConviSTFT(nn.Module):
     outputs = outputs/(coff+1e-8) #[N, 1, n_samples]
     shape = outputs.size()
     outputs = outputs.view(shape[0], shape[-1])
-    outputs = outputs[:, :L]
+    outputs = outputs[:, self.dim//2+1:L+self.dim//2+1]
     return outputs
