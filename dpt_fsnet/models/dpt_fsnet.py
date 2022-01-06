@@ -345,11 +345,11 @@ if __name__ == "__main__":
     test_model = DPT_FSNET(257, 64)
     # wav_batch = torch.rand(1, PARAM.sampling_rate).to(device)
     # emb_batch = torch.rand(1, PARAM.speaker_emb_size).to(device)
-    wav_feature_in = WavFeatures(wav_batch=torch.rand(1, PARAM.sampling_rate//10).to(device),
-                                 stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),  # [N, 2, F, T]
-                                 mag_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),
-                                 angle_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device),
-                                 normed_stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step//10).to(device))
+    wav_feature_in = WavFeatures(wav_batch=torch.rand(1, PARAM.sampling_rate).to(device),
+                                 stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step).to(device),  # [N, 2, F, T]
+                                 mag_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step).to(device),
+                                 angle_batch=torch.rand(1, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step).to(device),
+                                 normed_stft_batch=torch.rand(1, 2, PARAM.frequency_dim, PARAM.sampling_rate//PARAM.frame_step).to(device))
     macs, params = profile(test_model, inputs=(wav_feature_in.stft_batch,))
     print("Config class name: %s\n"%PARAM().config_name())
     # print("model name: %s\n"%PARAM.model_type)
