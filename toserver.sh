@@ -30,7 +30,7 @@ elif [ "$site" == "15043ali" ]; then
   rsync -avh -e 'ssh -p 6662' --exclude-from='.gitignore' ./$2/* $user@47.92.169.196:~/worklhf/TorchPHASEN/$3
 elif [ "$site" == "bss13001" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
-  rsync -avh -e 'ssh -p 13001' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SV_lhf/sv1_H_ASP_softmaxproto/loss/SE_VoiceBankDEMAND/$3
+  rsync -avh -e 'ssh -p 13001' --exclude-from='.gitignore' ./$2/*  $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
 elif [ "$site" == "bss13002" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
   rsync -avh -e 'ssh -p 13002' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
@@ -40,15 +40,15 @@ elif [ "$site" == "bss13003" ]; then
 elif [ "$site" == "bss13004" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
   rsync -avh -e 'ssh -p 13004' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
-elif [ "$site" == "vf113006" ]; then
+elif [ "$site" == "bss13006" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
   rsync -avh -e 'ssh -p 13006' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
-elif [ "$site" == "vf213007" ]; then
+elif [ "$site" == "bss13007" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
   rsync -avh -e 'ssh -p 13007' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
-elif [ "$site" == "vf313008" ]; then
+elif [ "$site" == "bss13008" ]; then
   echo "To $user@$site:~/worklhf/SE_VoiceBankDEMAND/$3"
-  rsync -avh -e 'ssh -p 13008' --exclude-from='.gitignore' ./$2/* $user@10.221.224.210:/root/worklhf/SV_lhf/sv1_H_ASP_softmaxproto/loss/SE_VoiceBankDEMAND/$3
+  rsync -avh -e 'ssh -p 13008' --exclude-from='.gitignore' ./$2/*  $user@10.221.224.210:/root/worklhf/SE_VoiceBankDEMAND/$3
 fi
 # -a ：递归到目录，即复制所有文件和子目录。另外，打开归档模式和所有其他选项（相当于 -rlptgoD）
 # -v ：详细输出
