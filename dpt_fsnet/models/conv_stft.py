@@ -9,7 +9,7 @@ def init_kernels(win_len, win_inc, fft_len, win_type=None, invers=False):
   if win_type == 'None' or win_type is None:
     window = np.ones(win_len)
   else:
-    window = get_window(win_type, win_len, fftbins=True)**0.5
+    window = get_window(win_type, win_len, fftbins=True)
 
   N = fft_len
   fourier_basis = np.fft.rfft(np.eye(N))[:win_len]
@@ -51,7 +51,7 @@ class ConvSTFT(nn.Module):
     assert inputs.dim() == 2, 'inputs dims error.'
 
     if self.pad_center:
-      inputs = torch.nn.functional.pad(inputs, [self.dim//2+1, self.dim//2+1])
+      inputs = torch.nn.functional.pad(inputs, [self.dim//2, self.dim//2])
 
     inputs = inputs.unsqueeze_(1) # [N, 1, L]
     outputs = F.conv1d(
@@ -72,7 +72,7 @@ class ConvSTFT(nn.Module):
 
 class ConviSTFT(nn.Module):
 
-  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', fix=True):
+  def __init__(self, win_len, win_inc, fft_len=None, win_type='hanning', pad_center=True, fix=True):
     super(ConviSTFT, self).__init__()
     if fft_len is None:
       self.fft_len = np.int(2**np.ceil(np.log2(win_len)))
@@ -87,6 +87,7 @@ class ConviSTFT(nn.Module):
     self.dim = self.fft_len
     self.register_buffer('window', window)
     self.register_buffer('enframe', torch.eye(win_len)[:,None,:])
+    self.pad_center = pad_center
 
   def forward(self, inputs, L, phase=None):
     """
@@ -113,5 +114,6 @@ class ConviSTFT(nn.Module):
     outputs = outputs/(coff+1e-8) #[N, 1, n_samples]
     shape = outputs.size()
     outputs = outputs.view(shape[0], shape[-1])
-    outputs = outputs[:, self.dim//2+1:L+self.dim//2+1]
+    if self.pad_center:
+      outputs = outputs[:, self.dim//2+1:L+self.dim//2+1]
     return outputs
