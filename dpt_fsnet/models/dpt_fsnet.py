@@ -353,6 +353,6 @@ if __name__ == "__main__":
     macs, params = profile(test_model, inputs=(wav_feature_in.stft_batch,))
     print("Config class name: %s\n"%PARAM().config_name())
     # print("model name: %s\n"%PARAM.model_type)
-    print("MACCs of processing 1s wav = %.2fM\n"%(macs/1e6))
+    print("MACCs of processing 1s wav = %.2fG\n"%(macs/1e9))
     print("params = %.2fM\n\n\n"%(params/1e6))
     # del tmp_model
