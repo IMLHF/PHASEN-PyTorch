@@ -7,5 +7,6 @@ __pycache__
 _pesq*
 DPT_FSNET_raw
 se_upbound.py
-uniTFDPRNN
+uniTFDPRNN*
+DCCRN
 -FLAGS.py
