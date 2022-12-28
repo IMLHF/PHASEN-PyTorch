@@ -501,7 +501,8 @@ class PHASEN(nn.Module):
     est_clean_stft_batch = torch.mul(
         est_clean_mag_batch.view([mag_shape[0], 1, mag_shape[1], mag_shape[2]]),
         est_normed_stft_batch)
-    est_clean_wav_batch = self._istft_fn(est_clean_stft_batch)
+    _mixed_wav_length = mixed_wav_batch.size()[-1]
+    est_clean_wav_batch = self._istft_fn(est_clean_stft_batch, _mixed_wav_length)
     _mixed_wav_length = self.mixed_wav_features.wav_batch.size()[-1]
     est_clean_wav_batch = est_clean_wav_batch[:, :_mixed_wav_length]
 
